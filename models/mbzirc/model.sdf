@@ -1,0 +1,24 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+	<model name="mbzirc">
+	    	<static>true</static>
+		<pose>-115 55 0.01 0 -0 0</pose>
+           <allow_auto_disable>true</allow_auto_disable>
+	    	<link name="link_track">
+			<pose>0 0 0 0 0 0</pose>
+			<gravity>true</gravity>
+			<self_collide>false</self_collide>
+			<kinematic>false</kinematic>
+		      <visual name="visual_track">
+				<pose>0 0 0 0 0 0</pose>
+		      	<geometry>
+		           		<mesh>
+		            		<uri>model://mbzirc/meshes/track.stl</uri>
+		          			<scale>100 100 100</scale>
+		          		</mesh>
+		        	</geometry>
+			      <material>Gazebo/Blue</material>
+		     </visual>
+	    </link>
+	</model>
+</sdf>
