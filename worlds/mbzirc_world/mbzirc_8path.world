@@ -20,18 +20,14 @@
 					<contact_surface_layer>0.0</contact_surface_layer>
 				</constraints>
 			</ode>
-			<max_step_size>0.01</max_step_size>
+			<max_step_size>0.001</max_step_size>
 			<real_time_factor>1</real_time_factor>
-			<real_time_update_rate>100</real_time_update_rate>
+			<real_time_update_rate>1000</real_time_update_rate>
 		</physics>
 
 		<!-- Include 8-Track -->
 		<include>
 			<uri>model://mbzirc</uri>
-		</include>
-		<!-- Target Template -->
-		<include>
-			<uri>model://target_square</uri>
 		</include>
 		<!-- Include ground color -->
 		<include>
@@ -42,11 +38,16 @@
 			<uri>model://sun</uri>
 		</include>
 
+		<!-- Target Template -->
+		<include>
+			<uri>model://target_square</uri>
+		</include>
+
 		<!-- Starting Area Model -->
 
 		<model name='start_area'>
 			<static>true</static>
-			<pose>0 0 0.001 0 0 0</pose>
+			<pose>0 0 0.002 0 0 0</pose>
 			<link name='link'>
 				<visual name='visual'>
 					<cast_shadows>false</cast_shadows>
@@ -101,7 +102,7 @@
 
 		<model name='drop_area'>
 		 	<static>true</static>
-			<pose>-130 50 0.001 0 -0 0</pose>
+			<pose>-130 50 0.002 0 -0 0</pose>
 		      	<link name='link'>
 		      		<visual name='visual'>
 			        		<cast_shadows>false</cast_shadows>
@@ -124,7 +125,12 @@
 		    		</link>
 		</model>
 
-
+		<!-- camera position -->
+		<gui>
+	      	<camera name="user_camera">
+	        		<pose>-65 25 50 0 1.57075 1.57075 </pose>
+	      	</camera>
+	    </gui>
 		<!-- ardupilot sitl gazebo model plugin -->
 
 	    	<plugin name="ardupilot_sitl_gazebo_plugin" filename="libardupilot_sitl_gazebo_plugin.so">

@@ -1,14 +1,14 @@
 <?xml version="1.0" ?>
 <sdf version="1.5">
-	<model name='target_square'>
-		<static>true</static>
-		<link name='link'>
-			<visual name='visual'>
-				<cast_shadows>false</cast_shadows>
+	<model name="target_square">
+    		<static>true</static>
+    		<link name="link">
+	      		<pose>-65 25 0.05 0 0 0</pose>
+	      		<visual name="visual">
 				<geometry>
 					<box>
-                  			<size>1.5 1.5 .015</size>
-                			</box>
+						<size>1.5 1.5 .015</size>
+					</box>
 				</geometry>
 				<material>
 					<script>
@@ -17,10 +17,10 @@
 						<name>target_square/Image</name>
 					</script>
 				</material>
-			</visual>
-			<self_collide>false</self_collide>
-			<kinematic>false</kinematic>
-			<gravity>true</gravity>
-		</link>
-	</model>
+	      		</visual>
+    		</link>
+    		<plugin name="mark_driver" filename="libtemplate_plugin.so">
+	      		<shape>eight_simple</shape>
+	    	</plugin>
+  	</model>
 </sdf>
