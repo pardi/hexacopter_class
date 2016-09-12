@@ -9,7 +9,7 @@
 	  <arg name="log_file" default="erlecopter"/>
 	  <arg name="headless" default="false"/>
 	  <arg name="gui" default="true"/>
-	  <arg name="world_name" default="$(find hexacopter_class)/worlds/mbzirc_world/mbzirc_8path.world"/>
+	  <arg name="world_name" default="$(find hexacopter_class)/worlds/mbzirc_world/mbzirc_8path_notrack.world"/>
 	  <env name="GAZEBO_MODEL_PATH" value="$(find drcsim_model_resources)/gazebo_models/environments:$(find ardupilot_sitl_gazebo_plugin)/meshes/meshes_sensors:$(find ardupilot_sitl_gazebo_plugin)/meshes/meshes_outdoor:$(find ardupilot_sitl_gazebo_plugin)/meshes/meshes_warehouse:$(find hexacopter_class)/models"/>
 	  <arg name="name" default="erlecopter"/>
 	  <arg name="model" default="$(find ardupilot_sitl_gazebo_plugin)/urdf/erlecopter_base.xacro"/>

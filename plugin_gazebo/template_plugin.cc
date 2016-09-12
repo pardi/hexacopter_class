@@ -116,7 +116,7 @@ namespace gazebo
 
 	      	float t = ((time_after.tv_usec + (time_after.tv_sec - time_before.tv_sec) * 1000000) - time_before.tv_usec) / 1000.0;
 
-	      	if (t >= 360000 ) { // 6 [min]
+			if (t >= 360000 ) { // 6 [min]
 
 				time_before = time_after;
 
@@ -137,7 +137,7 @@ namespace gazebo
 
 			}
 
-			/// --- 
+			// --- 
 
 			switch (shape)
 			{

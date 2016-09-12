@@ -4,7 +4,7 @@ SET(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 SET(CMAKE_DEPENDS_CHECK_CXX
-  "/home/solaris/MBZIRC/main_code/gazebo_plugin/template_plugin/template_plugin.cc" "/home/solaris/MBZIRC/main_code/gazebo_plugin/template_plugin/build/CMakeFiles/template_plugin.dir/template_plugin.cc.o"
+  "/home/solaris/catkin_ws/src/hexacopter_class/plugin_gazebo/template_plugin.cc" "/home/solaris/catkin_ws/src/hexacopter_class/plugin_gazebo/build/CMakeFiles/template_plugin.dir/template_plugin.cc.o"
   )
 SET(CMAKE_CXX_COMPILER_ID "GNU")
 

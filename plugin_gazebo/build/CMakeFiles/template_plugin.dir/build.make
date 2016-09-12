@@ -35,10 +35,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/solaris/MBZIRC/main_code/gazebo_plugin/template_plugin
+CMAKE_SOURCE_DIR = /home/solaris/catkin_ws/src/hexacopter_class/plugin_gazebo
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/solaris/MBZIRC/main_code/gazebo_plugin/template_plugin/build
+CMAKE_BINARY_DIR = /home/solaris/catkin_ws/src/hexacopter_class/plugin_gazebo/build
 
 # Include any dependencies generated for this target.
 include CMakeFiles/template_plugin.dir/depend.make
@@ -51,17 +51,17 @@ include CMakeFiles/template_plugin.dir/flags.make
 
 CMakeFiles/template_plugin.dir/template_plugin.cc.o: CMakeFiles/template_plugin.dir/flags.make
 CMakeFiles/template_plugin.dir/template_plugin.cc.o: ../template_plugin.cc
-	$(CMAKE_COMMAND) -E cmake_progress_report /home/solaris/MBZIRC/main_code/gazebo_plugin/template_plugin/build/CMakeFiles $(CMAKE_PROGRESS_1)
+	$(CMAKE_COMMAND) -E cmake_progress_report /home/solaris/catkin_ws/src/hexacopter_class/plugin_gazebo/build/CMakeFiles $(CMAKE_PROGRESS_1)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building CXX object CMakeFiles/template_plugin.dir/template_plugin.cc.o"
-	/usr/bin/c++   $(CXX_DEFINES) $(CXX_FLAGS) -o CMakeFiles/template_plugin.dir/template_plugin.cc.o -c /home/solaris/MBZIRC/main_code/gazebo_plugin/template_plugin/template_plugin.cc
+	/usr/bin/c++   $(CXX_DEFINES) $(CXX_FLAGS) -o CMakeFiles/template_plugin.dir/template_plugin.cc.o -c /home/solaris/catkin_ws/src/hexacopter_class/plugin_gazebo/template_plugin.cc
 
 CMakeFiles/template_plugin.dir/template_plugin.cc.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/template_plugin.dir/template_plugin.cc.i"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_FLAGS) -E /home/solaris/MBZIRC/main_code/gazebo_plugin/template_plugin/template_plugin.cc > CMakeFiles/template_plugin.dir/template_plugin.cc.i
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_FLAGS) -E /home/solaris/catkin_ws/src/hexacopter_class/plugin_gazebo/template_plugin.cc > CMakeFiles/template_plugin.dir/template_plugin.cc.i
 
 CMakeFiles/template_plugin.dir/template_plugin.cc.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/template_plugin.dir/template_plugin.cc.s"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_FLAGS) -S /home/solaris/MBZIRC/main_code/gazebo_plugin/template_plugin/template_plugin.cc -o CMakeFiles/template_plugin.dir/template_plugin.cc.s
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_FLAGS) -S /home/solaris/catkin_ws/src/hexacopter_class/plugin_gazebo/template_plugin.cc -o CMakeFiles/template_plugin.dir/template_plugin.cc.s
 
 CMakeFiles/template_plugin.dir/template_plugin.cc.o.requires:
 .PHONY : CMakeFiles/template_plugin.dir/template_plugin.cc.o.requires
@@ -125,6 +125,6 @@ CMakeFiles/template_plugin.dir/clean:
 .PHONY : CMakeFiles/template_plugin.dir/clean
 
 CMakeFiles/template_plugin.dir/depend:
-	cd /home/solaris/MBZIRC/main_code/gazebo_plugin/template_plugin/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/solaris/MBZIRC/main_code/gazebo_plugin/template_plugin /home/solaris/MBZIRC/main_code/gazebo_plugin/template_plugin /home/solaris/MBZIRC/main_code/gazebo_plugin/template_plugin/build /home/solaris/MBZIRC/main_code/gazebo_plugin/template_plugin/build /home/solaris/MBZIRC/main_code/gazebo_plugin/template_plugin/build/CMakeFiles/template_plugin.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/solaris/catkin_ws/src/hexacopter_class/plugin_gazebo/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/solaris/catkin_ws/src/hexacopter_class/plugin_gazebo /home/solaris/catkin_ws/src/hexacopter_class/plugin_gazebo /home/solaris/catkin_ws/src/hexacopter_class/plugin_gazebo/build /home/solaris/catkin_ws/src/hexacopter_class/plugin_gazebo/build /home/solaris/catkin_ws/src/hexacopter_class/plugin_gazebo/build/CMakeFiles/template_plugin.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/template_plugin.dir/depend
 

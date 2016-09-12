@@ -31,14 +31,16 @@
 
 namespace hxcpt {
 
-	enum Guide_Mode { 	GUIDED 		= 0, 
+	enum Guide_Mode { 	
+						GUIDED 		= 0, 
 						LOITER 		= 1, 
-						STABILIZE 	= 2,
-						ALT_HOLD	= 3,
-						NOT_INIT 	= 255,
+						STABILIZE 		= 2,
+						ALT_HOLD		= 3,
+						NOT_INIT 		= 255,
 					};
 
-	enum arm_mode 	{ 	ARM 	= true,
+	enum arm_mode 	{ 	
+						ARM 		= true,
 						DISARM 	= false
 					};
 
@@ -82,28 +84,30 @@ namespace hxcpt {
 		bool str2Guide_Mode(const std::string, uint8_t&);
 		bool Guide_Mode2str(const uint8_t, std::string&);
 
-	    ros::NodeHandle* n_;
+		bool verbose_;
 
-	    bool verbose_;
+		uint8_t mode_;
+		int guided_;
+		int armed_;
+		sensor_msgs::NavSatFix globalGPS_;
+		float voltage_;
+		int seq_;
+		geometry_msgs::PointStamped target_pos_;
 
-	    uint8_t mode_;
-	    int guided_;
-	    int armed_;
-	   	sensor_msgs::NavSatFix globalGPS_;
-	   	float voltage_;
-	   	int seq_;
-	   	geometry_msgs::PointStamped target_pos_;
-
-	   	int8_t roll_step_, pitch_step_, yaw_step_, throttle_step_;
-	   	bool end_flag_;
+		int8_t roll_step_, pitch_step_, yaw_step_, throttle_step_;
+		bool end_flag_;
 
 		std::thread* th_ctrl_;
 		std::thread* th_spin_;
 
+		// ROS
+		
+		ros::NodeHandle* n_;
+
 		ros::Subscriber mavros_state_sub_;
 		ros::Subscriber mavros_gpsFIX_sub_;
-    	ros::Subscriber mavros_battery_sub_;
-    	ros::Subscriber target_pos_sub_;
+		ros::Subscriber mavros_battery_sub_;
+		ros::Subscriber target_pos_sub_;
 
 		ros::Publisher mavros_overrideIN_pub_;
 

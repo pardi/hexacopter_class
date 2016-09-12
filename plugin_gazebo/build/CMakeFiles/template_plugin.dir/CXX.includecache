@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/home/solaris/MBZIRC/main_code/gazebo_plugin/template_plugin/template_plugin.cc
+/home/solaris/catkin_ws/src/hexacopter_class/plugin_gazebo/template_plugin.cc
 boost/bind.hpp
 -
 gazebo/gazebo.hh

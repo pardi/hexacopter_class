@@ -1,0 +1,108 @@
+<?xml version="1.0" ?>
+<sdf version="1.4">
+	<world name="default">
+
+		<!-- Physics variables -->
+
+		<physics type='ode'>
+		      <gravity>0 0 -9.81</gravity>
+			<ode>
+				<solver>
+			          <use_dynamic_moi_rescaling>true</use_dynamic_moi_rescaling>
+					<type>quick</type>
+					<iters>50</iters>
+					<sor>1.0</sor>
+				</solver>
+				<constraints>
+					<cfm>0.0</cfm>
+					<erp>0.2</erp>
+					<contact_max_correcting_vel>100.0</contact_max_correcting_vel>
+					<contact_surface_layer>0.0</contact_surface_layer>
+				</constraints>
+			</ode>
+			<max_step_size>0.001</max_step_size>
+			<real_time_factor>1</real_time_factor>
+			<real_time_update_rate>1000</real_time_update_rate>
+		</physics>
+
+		<!-- Include ground color -->
+		<include>
+	    		<uri>model://cricket_ground</uri>
+	  	</include>
+	  	<!-- Include Sun -->
+		<include>
+			<uri>model://sun</uri>
+		</include>
+
+		<!-- Target Template -->
+		<include>
+			<uri>model://target_square</uri>
+		</include>
+
+		<!-- Starting Area Model -->
+
+		<model name='start_area'>
+			<static>true</static>
+			<pose>0 0 0.002 0 0 0</pose>
+			<link name='link'>
+				<visual name='visual'>
+					<cast_shadows>false</cast_shadows>
+					<geometry>
+					      <plane>
+						      <normal>0 0 1</normal>
+						      <size>10 10</size>
+					      </plane>
+				    	</geometry>
+				    	<material>
+					      <script>
+							<uri>file://media/materials/scripts/gazebo.material</uri>
+							<name>Gazebo/Grey</name>
+					      </script>
+				     </material>
+			  	</visual>
+				<self_collide>false</self_collide>
+				<kinematic>false</kinematic>
+				<gravity>true</gravity>
+			</link>
+		</model>
+
+		<!-- Droping Area Model -->
+
+		<model name='drop_area'>
+		 	<static>true</static>
+			<pose>-130 50 0.002 0 -0 0</pose>
+		      	<link name='link'>
+		      		<visual name='visual'>
+			        		<cast_shadows>false</cast_shadows>
+			        		<geometry>
+		          				<plane>
+		            				<normal>0 0 1</normal>
+		            				<size>10 10</size>
+		          				</plane>
+		        			</geometry>
+		        			<material>
+			          			<script>
+			            			<uri>file://media/materials/scripts/gazebo.material</uri>
+						           <name>Gazebo/Grey</name>
+						      </script>
+		        			</material>
+		      		</visual>
+				      <self_collide>false</self_collide>
+				      <kinematic>false</kinematic>
+				      <gravity>true</gravity>
+		    		</link>
+		</model>
+
+		<!-- camera position -->
+		<gui>
+	      	<camera name="user_camera">
+	        		<pose>-65 25 50 0 1.57075 1.57075 </pose>
+	      	</camera>
+	    </gui>
+		<!-- ardupilot sitl gazebo model plugin -->
+
+	    	<plugin name="ardupilot_sitl_gazebo_plugin" filename="libardupilot_sitl_gazebo_plugin.so">
+			<UAV_MODEL>erlecopter</UAV_MODEL>
+	    	</plugin>
+	</world>
+</sdf>

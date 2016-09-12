@@ -1,1 +1,1 @@
-/home/solaris/MBZIRC/main_code/gazebo_plugin/template_plugin/build/CMakeFiles/template_plugin.dir
+/home/solaris/catkin_ws/src/hexacopter_class/plugin_gazebo/build/CMakeFiles/template_plugin.dir
