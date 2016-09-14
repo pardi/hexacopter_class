@@ -10,6 +10,11 @@
 						<size>1.5 1.5 .015</size>
 					</box>
 				</geometry>
+				<collision>
+					<box>
+						<size>1.5 1.5 .015</size>
+					</box>
+				</collision>				
 				<material>
 					<script>
 						<uri>model://target_square/materials/scripts</uri>
@@ -20,7 +25,8 @@
 	      		</visual>
     		</link>
     		<plugin name="mark_driver" filename="libtemplate_plugin.so">
-	      		<shape>eight_simple</shape>
+	      		<shape>dot</shape>
+	      		<!-- <shape>eight_simple</shape> -->
 	    	</plugin>
   	</model>
 </sdf>

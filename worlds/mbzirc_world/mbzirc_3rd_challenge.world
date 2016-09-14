@@ -37,12 +37,14 @@
 		<include>
 			<uri>model://sun</uri>
 		</include>
+		
 
-		<!-- Target Template -->
-		<include>
-			<uri>model://target_square</uri>
-		</include>
-
+		<!-- camera position -->
+		<gui>
+	      	<camera name="user_camera">
+	        		<pose>-65 25 50 0 1.57075 1.57075 </pose>
+	      	</camera>
+	    </gui>
 		<!-- Starting Area Model -->
 
 		<model name='start_area'>
@@ -126,30 +128,95 @@
 		</model>
 
 
-		<population name="can_population1">
-			<model name="can1">
-				<include>
-					<static>true</static>
-					<uri>model://coke_can</uri>
-				</include>
-			</model>
-			<pose>-65 25 0 0 0 0</pose>
-			<box>
-				<size>100 60 0.01</size>
-			</box>
-			<model_count>10</model_count>
-			<distribution>
-				<type>random</type>
-			</distribution>
-		</population>
+
+		<!-- Square target -->
+
+		<model name='square_target'>
+			<pose>-67.5 27.5 0.002 0 0 0</pose>
+			<link name='link'>
+	            	<collision name='collision'>
+	              		<geometry>
+		                		<box>
+		                  		<size>.3 .3 .2</size>
+		                		</box>
+	              		</geometry>
+	            	</collision>
+
+	            	<visual name='visual'>
+		              	<geometry>
+			               	 <box>
+			                  	<size>.3 .3 .2</size>
+			                	</box>
+		              	</geometry>          	
+					<material>
+			        		<script>
+			      			<name>Gazebo/Blue</name>
+			        		</script>
+		      		</material>	
+	           		</visual>	
+           		</link>
+		</model>
 
 
-		<!-- camera position -->
-		<gui>
-	      	<camera name="user_camera">
-	        		<pose>-65 25 50 0 1.57075 1.57075 </pose>
-	      	</camera>
-	    </gui>
+		<!-- cylinder target -->
+
+		<model name='cylinder_target'>
+			<pose>-67.5 22.5 0.002 0 0 0</pose>
+			<link name='link'>
+	            	<collision name='collision'>
+	              		<geometry>
+						<cylinder>
+							<radius>.3</radius>
+							<length>.2</length>
+						</cylinder>
+	              		</geometry>
+	            	</collision>
+
+	            	<visual name='visual'>
+		              	<geometry>
+						<cylinder>
+							<radius>.15</radius>
+							<length>.2</length>
+						</cylinder>
+		              	</geometry>
+					<material>
+			        		<script>
+			      			<name>Gazebo/Red</name>
+			        		</script>
+		      		</material>	
+	           		</visual>
+           		</link>
+		</model>
+
+
+		<!-- Long Square target -->
+
+		<model name='long_square_target'>
+			<pose>-62.5 27.5 0.002 0 0 0</pose>
+			<link name='link'>
+	            	<collision name='collision'>
+	              		<geometry>
+		                		<box>
+		                  		<size>2 .3 .2</size>
+		                		</box>
+	              		</geometry>
+	            	</collision>
+
+	            	<visual name='visual'>
+		              	<geometry>
+			               	 <box>
+			                  	<size>2 .3 .2</size>
+			                	</box>
+		              	</geometry>
+					<material>
+			        		<script>
+			      			<name>Gazebo/Black</name>
+			        		</script>
+		      		</material>	
+	           		</visual>
+           		</link>
+		</model>
+
 		<!-- ardupilot sitl gazebo model plugin -->
 
 	    	<plugin name="ardupilot_sitl_gazebo_plugin" filename="libardupilot_sitl_gazebo_plugin.so">

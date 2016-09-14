@@ -83,7 +83,8 @@ namespace gazebo
 						shape = STOP;
 
 			// step_ = 0.0005; //old step_ defined by Erle
-			speed_ = 4.167; // m/s, max speed
+			// speed_ = 4.167; // m/s, max speed
+			speed_ = 2.167; // m/s, max speed
 
 			step_ = STEP_TIME * speed_;  
  			step_angle_ = (step_  * 360) / (2 * M_PI *  RADIUS);

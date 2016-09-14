@@ -14,6 +14,9 @@
 #include <mavros_msgs/OverrideRCIn.h>
 #include <mavros_msgs/BatteryStatus.h>
 #include <sensor_msgs/NavSatFix.h>
+#include <geometry_msgs/Point.h>
+#include <mark_follower/markPoseStamped.h>
+#include <std_msgs/Float64.h>
 
 // ROS MSG LIBs
 #include <geometry_msgs/TwistStamped.h>
@@ -28,6 +31,10 @@
 #define BASERC  1500
 #define MAXRC   1800
 #define BATTERY_MIN_V 14.5
+
+#define FACTOR  0.9
+
+
 
 namespace hxcpt {
 
@@ -66,14 +73,15 @@ namespace hxcpt {
 		bool setlocaltwist(geometry_msgs::Twist);
 
 		void spin();
-		void ctrl();	
+		void control_rule();	
 
 	private:
 
 		void stateCallback(const mavros_msgs::State::ConstPtr&);
 		void gpsFIXCallback(const sensor_msgs::NavSatFix::ConstPtr&);
 		void batteryCallback(const mavros_msgs::BatteryStatus::ConstPtr&);
-		void targetPosCallback(const geometry_msgs::PointStamped::ConstPtr&);
+		void markposeCallback(const mark_follower::markPoseStampedPtr&);
+		void altitudeCallback(const std_msgs::Float64Ptr&);
 
 		bool preArm_check();
 		void init();
@@ -86,19 +94,29 @@ namespace hxcpt {
 
 		bool verbose_;
 
+		// Flight params
+		float altitude_;
 		uint8_t mode_;
 		int guided_;
 		int armed_;
 		sensor_msgs::NavSatFix globalGPS_;
 		float voltage_;
 		int seq_;
-		geometry_msgs::PointStamped target_pos_;
 
+		// Control step
 		int8_t roll_step_, pitch_step_, yaw_step_, throttle_step_;
+		// Release/hold flag on RC override
 		bool end_flag_;
 
-		std::thread* th_ctrl_;
+		std::thread* th_control_rule_;
 		std::thread* th_spin_;
+
+		// Reference target position and informations
+		geometry_msgs::Point targetRef_;
+		int budgetResidual_;
+		float refVariance_;
+		ros::Time targetStamp_;
+
 
 		// ROS
 		
@@ -108,6 +126,7 @@ namespace hxcpt {
 		ros::Subscriber mavros_gpsFIX_sub_;
 		ros::Subscriber mavros_battery_sub_;
 		ros::Subscriber target_pos_sub_;
+		ros::Subscriber altitude_sub_;
 
 		ros::Publisher mavros_overrideIN_pub_;
 
