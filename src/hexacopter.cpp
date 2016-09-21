@@ -476,23 +476,45 @@ void hexacopter::control_rule(){
 	ros::Rate r(15);
 
 	double err_x, err_y;
+	double sum_err_x = 0, sum_err_y = 0;
+
+	double dt = 0.067;
+	
 
 	while(ros::ok()){
+
 
 		err_x = (1280 / 2) - targetRef_.x;
 		err_y = (720 /  2) - targetRef_.y;
 
+		sum_err_x += err_x * dt;
+		sum_err_y += err_y * dt;
+
+		// Anti wind-UP
+
+		if (sum_err_x > 100)
+			sum_err_x = 100;
+		
+		if (sum_err_y > 100)
+			sum_err_y = 100;
+
+		if (sum_err_x < -100)
+			sum_err_x = -100;
+		
+		if (sum_err_y < -100)
+			sum_err_y = -100;
 
 		// Calculate Roll and Pitch depending on the mode
-		if (mode_ == LOITER && budgetResidual_ > 0){
-			Roll = BASERC - err_x * FACTOR;
-			Pitch = BASERC - err_y * FACTOR;
+		if (mode_ == LOITER && budgetResidual_ > 0 ){
+			
+			Roll = BASERC - err_x * K_P + K_I * sum_err_x;
+			Pitch = BASERC - err_y * K_P + K_I * sum_err_y;
 
 			// Throttle = BASERC - (altitude_ - 1) * 100;
-			if (refVariance_ > 100 )
-					Throttle = BASERC  - 100;   
+			if (refVariance_ > 100 && altitude_ > 0.7)
+				Throttle = BASERC  - 100; 	
 			else
-					Throttle = BASERC;  
+				Throttle = BASERC;  
 		}else{
 			Roll = BASERC;
 			Pitch = BASERC;

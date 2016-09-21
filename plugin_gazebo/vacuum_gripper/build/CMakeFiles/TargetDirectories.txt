@@ -1,0 +1,1 @@
+/home/solaris/catkin_ws/src/hexacopter_class/plugin_gazebo/vacuum_gripper/build/CMakeFiles/vacuum_gripper.dir

@@ -32,7 +32,8 @@
 #define MAXRC   1800
 #define BATTERY_MIN_V 14.5
 
-#define FACTOR  0.9
+#define K_P  ((altitude_> 3)?0.9:0.3)
+#define K_I  0.3
 
 
 

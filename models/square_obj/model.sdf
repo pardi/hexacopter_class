@@ -1,0 +1,27 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+	<model name="rectagnel_obj">
+    		<static>true</static>
+    		<link name="link">
+	      		<visual name="visual">
+					<geometry>
+						<box>
+							<size>.3 .3 .2</size>					
+						</box>
+					</geometry>			
+					<material>
+						<script>
+							<name>Gazebo/Blue</name>
+						</script>
+					</material>
+	      		</visual>
+				<collision name="collision">
+					<geometry>
+						<box>
+							<size>.3 .3 .2</size>					
+						</box>
+					</geometry>			
+				</collision>	
+    			</link>
+  	</model>
+</sdf>
