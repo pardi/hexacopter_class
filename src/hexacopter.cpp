@@ -29,7 +29,8 @@ hexacopter::hexacopter(int argc, char** argv, bool verbose){
 	voltage_ = NOT_INIT;
 	altitude_ = 0;
 
-	end_flag_ = false;
+	// set OFF 
+	lbstate_ = BUTTON_OFF;
 
 	targetRef_.x = 0;
 	budgetResidual_ = 0;
@@ -57,7 +58,7 @@ hexacopter::hexacopter(ros::NodeHandle* n, bool verbose){
 	mavros_state_sub_ = n_->subscribe("/mavros/state", 1, &hexacopter::stateCallback, this); 
 	mavros_gpsFIX_sub_ = n_->subscribe("/mavros/global_position/raw/fix", 1, &hexacopter::gpsFIXCallback, this);
 	mavros_battery_sub_ = n_->subscribe("/mavros/battery", 1, &hexacopter::batteryCallback, this);
-
+	mavros_rcIn_sub_ = n_->subscribe("/mavros/rc/in", 1, &hexacopter::rcINCallback, this);
 	// Target info by camera recognition
 
 	target_pos_sub_ = n->subscribe("/ids_rec/pose", 100, &hexacopter::markposeCallback, this);
@@ -74,7 +75,8 @@ hexacopter::hexacopter(ros::NodeHandle* n, bool verbose){
 	voltage_ = NOT_INIT;
 	altitude_ = 0;
 	
-	end_flag_ = false;
+	// set OFF 
+	lbstate_ = BUTTON_OFF;
 
 	targetRef_.x = 0;
 	budgetResidual_ = 0;
@@ -264,55 +266,48 @@ bool hexacopter::land(){
 
 }
 
-bool hexacopter::set_ORCIn(int Roll, int Pitch, int Yaw, int Throttle){
+bool hexacopter::set_ORCIn(int ch1, int ch2, int ch3, int ch4, int ch5, int ch6, int ch7, int ch8){
 
 	mavros_msgs::OverrideRCIn msg;
 
-	// Limit the Roll
-	if (Roll > MAXRC)
-		Roll = MAXRC;
+	// Limit the ch1
+	if (ch1 > MAXRC)
+		ch1 = MAXRC;
 	else 
-		if (Roll < MINRC)
-			Roll = MINRC;
+		if (ch1 < MINRC)
+			ch1 = MINRC;
 
-	// Limit the Pitch
-	if (Pitch > MAXRC)
-		Pitch = MAXRC;
+	// Limit the ch2
+	if (ch2 > MAXRC)
+		ch2 = MAXRC;
 	else 
-		if (Pitch < MINRC)
-			Pitch = MINRC;
+		if (ch2 < MINRC)
+			ch2 = MINRC;
 
-	// Limit the Throttle
-	if (Throttle > MAXRC)
-		Throttle = MAXRC;
+	// Limit the ch4
+	if (ch4 > MAXRC)
+		ch4 = MAXRC;
 	else 
-		if (Throttle < MINRC)
-			Throttle = MINRC;
+		if (ch4 < MINRC)
+			ch4 = MINRC;
 
-	// Limit the Throttle
-	if (Yaw > MAXRC)
-		Yaw = MAXRC;
+	// Limit the ch4
+	if (ch3 > MAXRC)
+		ch3 = MAXRC;
 	else 
-		if (Yaw < MINRC)
-			Yaw = MINRC;
-
-	if (end_flag_){
-			Roll = 65536;
-			Pitch = 65536;
-			Throttle = 65536;
-			Yaw = 65536;
-	}
+		if (ch3 < MINRC)
+			ch3 = MINRC;
 
 	// Compose Message	    
 
-	msg.channels[0] = Roll;     	//Roll
-	msg.channels[1] = Pitch;    	//Pitch
-	msg.channels[2] = Throttle;   	//Throttle
-	msg.channels[3] = Yaw;        	//Yaw
-	msg.channels[4] = 0;
-	msg.channels[5] = 0;
-	msg.channels[6] = 0;
-	msg.channels[7] = 0;
+	msg.channels[0] = ch1;     	//Roll
+	msg.channels[1] = ch2;    	//Pitch
+	msg.channels[2] = ch4;   	//Throttle
+	msg.channels[3] = ch3;        	//Yaw
+	msg.channels[4] = ch5;
+	msg.channels[5] = ch6;
+	msg.channels[6] = ch7;
+	msg.channels[7] = ch8;
 
 	//ROS_INFO("%d, %d, %d, %d\n", Roll, Pitch, Throttle, Yaw);
 
@@ -359,6 +354,15 @@ void hexacopter::markposeCallback(const mark_follower::markPoseStampedPtr& msg){
 	refVariance_ = msg->variance;
 
 }
+
+void hexacopter::rcINCallback(const mavros_msgs::RCIn::ConstPtr& msg){
+
+	// Store data
+
+	rcIn_ = *msg;
+
+}
+
 
 void hexacopter::altitudeCallback(const std_msgs::Float64Ptr &msg)
 {
@@ -483,12 +487,42 @@ void hexacopter::control_rule(){
 
 	while(ros::ok()){
 
+		if (mode_ == GUIDED)
+			continue;
+
+		// Operator takes control
+
+		if (rcIn_.channels[4] > BASERC){ // swith ON from transmitter
+			if (!lbstate_) // laste stete was OFF
+				set_ORCIn(RELEASE_RC, RELEASE_RC, RELEASE_RC, RELEASE_RC, RELEASE_RC, RELEASE_RC, RELEASE_RC, RELEASE_RC);
+
+			lbstate_ = BUTTON_ON;
+
+			continue;
+
+		}else{ // switch OFF from transmitter
+			if (lbstate_){ // last state was ON
+
+				// Init control vars
+				targetRef_.x = 0;
+				targetRef_.x = 0;
+
+				sum_err_x = 0;
+				sum_err_y = 0;
+			}
+			
+			lbstate_ = BUTTON_OFF;
+		}
+
+			
 
 		err_x = (1280 / 2) - targetRef_.x;
 		err_y = (720 /  2) - targetRef_.y;
 
 		sum_err_x += err_x * dt;
 		sum_err_y += err_y * dt;
+
+		// std::cout << targetRef_.x << " " << targetRef_.y << " "<< sum_err_x << " " << sum_err_y<<  std::endl ;
 
 		// Anti wind-UP
 
@@ -511,8 +545,13 @@ void hexacopter::control_rule(){
 			Pitch = BASERC - err_y * K_P + K_I * sum_err_y;
 
 			// Throttle = BASERC - (altitude_ - 1) * 100;
-			if (refVariance_ > 100 && altitude_ > 0.7)
-				Throttle = BASERC  - 100; 	
+			if (refVariance_ > 100 && altitude_ > 0.5){
+				// Throttle = BASERC  - 100; 	
+				if (altitude_ > 0.5)
+					Throttle = BASERC - ((altitude_ - 0.5) * 20 + 50);
+				else
+					Throttle = BASERC  - 100; 			
+			}
 			else
 				Throttle = BASERC;  
 		}else{
@@ -520,6 +559,8 @@ void hexacopter::control_rule(){
 			Pitch = BASERC;
 			Throttle = BASERC;  
 		}  
+
+		std::cout << Roll << " " << Pitch << " " << Throttle << std::endl;
 
 		set_ORCIn(Roll, Pitch, Yaw, Throttle);
 
@@ -604,15 +645,17 @@ void hexacopter::spin(){
 	while (!set_arm(ARM) && ros::ok());
 
 	// ATTENTION MOTOR ARM
-	takeoff(25);
+	takeoff(5);
 	// char dir;
 	ros::Rate r(10);
 	bool set_loiter = true;
 		
 	while(ros::ok()){
 
-		if (altitude_ > 24.5 && set_loiter){
+		if (altitude_ > 4.5 && set_loiter){
 			set_Mode(LOITER);
+			// // usleep(10000000);
+			// break;
 			set_loiter = false;
 		}
 
@@ -624,7 +667,7 @@ void hexacopter::spin(){
 	land();
 
 	if (verbose_ == true)
-			ROS_INFO("Disarming...");
+		ROS_INFO("Disarming...");
 	
 	while (!set_arm(DISARM) && ros::ok());
 

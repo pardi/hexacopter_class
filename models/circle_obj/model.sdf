@@ -1,8 +1,7 @@
 <?xml version="1.0" ?>
 <sdf version="1.5">
 	<model name="circle_obj">
-	<pose>-67.5 22.5 0.002 0 0 0</pose>
-	<link name='link'>
+<!-- 	<link name='link'>
           	<collision name='collision'>
             		<geometry>
 				<cylinder>
@@ -10,7 +9,7 @@
 					<length>.2</length>
 				</cylinder>
             		</geometry>
-          	</collision>
+           	</collision>
 
           	<visual name='visual'>
               	<geometry>
@@ -26,5 +25,27 @@
       		</material>	
          		</visual>
        		</link>
-		</model>
+		</model> -->
+		<link name='link'>
+	      		<visual name="visual">
+					<geometry>
+						<box>
+							<size>.3 .3 .2</size>					
+						</box>
+					</geometry>			
+					<material>
+						<script>
+							<name>Gazebo/Red</name>
+						</script>
+					</material>
+	      		</visual>
+				<collision name="collision">
+					<geometry>
+						<box>
+							<size>.3 .3 .2</size>					
+						</box>
+					</geometry>			
+				</collision>	
+    			</link>
+  	</model>
 </sdf>

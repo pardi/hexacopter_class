@@ -12,6 +12,7 @@
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
 #include <mavros_msgs/OverrideRCIn.h>
+#include <mavros_msgs/RCIn.h>
 #include <mavros_msgs/BatteryStatus.h>
 #include <sensor_msgs/NavSatFix.h>
 #include <geometry_msgs/Point.h>
@@ -30,12 +31,18 @@
 #define MINRC   1150
 #define BASERC  1500
 #define MAXRC   1800
+
+
 #define BATTERY_MIN_V 14.5
+#define RELEASE_RC	65536
 
-#define K_P  ((altitude_> 3)?0.9:0.3)
-#define K_I  0.3
+#define BUTTON_OFF	false
+#define BUTTON_ON	true
 
 
+#define K_P  ((altitude_> 12)?0.9:(altitude_> 3)?0.4:(altitude_> 2)?0.32:(altitude_> 1.2)?0.2:0.05)
+#define K_I  0.01
+#define sgn(x) ((x>0)?1:-1)
 
 namespace hxcpt {
 
@@ -70,7 +77,7 @@ namespace hxcpt {
 		bool takeoff(const float);
 		bool land();
 
-		bool set_ORCIn(int, int, int, int);
+		bool set_ORCIn(int, int, int, int, int ch5 = 0, int ch6  = 0, int ch7 = 0, int ch8 = 0);
 		bool setlocaltwist(geometry_msgs::Twist);
 
 		void spin();
@@ -83,6 +90,7 @@ namespace hxcpt {
 		void batteryCallback(const mavros_msgs::BatteryStatus::ConstPtr&);
 		void markposeCallback(const mark_follower::markPoseStampedPtr&);
 		void altitudeCallback(const std_msgs::Float64Ptr&);
+		void rcINCallback(const mavros_msgs::RCIn::ConstPtr&);
 
 		bool preArm_check();
 		void init();
@@ -106,8 +114,9 @@ namespace hxcpt {
 
 		// Control step
 		int8_t roll_step_, pitch_step_, yaw_step_, throttle_step_;
-		// Release/hold flag on RC override
-		bool end_flag_;
+		
+		// Release/hold flag on RC override,, last button state
+		bool lbstate_; 
 
 		std::thread* th_control_rule_;
 		std::thread* th_spin_;
@@ -118,6 +127,8 @@ namespace hxcpt {
 		float refVariance_;
 		ros::Time targetStamp_;
 
+		// External RC command
+		mavros_msgs::RCIn rcIn_;
 
 		// ROS
 		
@@ -126,6 +137,7 @@ namespace hxcpt {
 		ros::Subscriber mavros_state_sub_;
 		ros::Subscriber mavros_gpsFIX_sub_;
 		ros::Subscriber mavros_battery_sub_;
+		ros::Subscriber mavros_rcIn_sub_;
 		ros::Subscriber target_pos_sub_;
 		ros::Subscriber altitude_sub_;
 
