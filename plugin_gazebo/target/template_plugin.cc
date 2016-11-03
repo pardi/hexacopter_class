@@ -86,6 +86,8 @@ namespace gazebo
 			// speed_ = 4.167; // m/s, max speed
 			// speed_ = 2.778; // m/s, max speed
 
+			speed_ = 0.1;
+
 			step_ = STEP_TIME * speed_;  
  			step_angle_ = (step_  * 360) / (2 * M_PI *  RADIUS);
 
@@ -110,12 +112,12 @@ namespace gazebo
 		// Called by the world update start event
 		public: void OnUpdate(const common::UpdateInfo & /*_info*/)
 		{
-			// printf("%f %f\n", step_angle_, step_ );
+			// printf("%f %f %f\n", step_angle_, step_, speed_);
 	        /// Time manager
 
-	      	gettimeofday(&time_after, NULL);
+	      		gettimeofday(&time_after, NULL);
 
-	      	float t = ((time_after.tv_usec + (time_after.tv_sec - time_before.tv_sec) * 1000000) - time_before.tv_usec) / 1000.0;
+	      		float t = ((time_after.tv_usec + (time_after.tv_sec - time_before.tv_sec) * 1000000) - time_before.tv_usec) / 1000.0;
 
 			if (t >= 360000 ) { // 6 [min]
 

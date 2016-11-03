@@ -54,5 +54,12 @@
 	    <arg name="gui" value="$(arg gui)"/>
 	    <arg name="world_name" value="$(arg world_name)"/>
 	  </include>
+
+
+	<arg name="yamlFile" default="$(find mark_follower)/conf/config.yaml"/>
+
+	<rosparam command="load" file="$(arg yamlFile)"/>
+
+	<!-- <node name="hexacopter_class_node" pkg="hexacopter_class" type="hexacopter_class" args="0" output="screen" /> -->
     
 </launch>

@@ -25,6 +25,7 @@
 			<real_time_update_rate>1000</real_time_update_rate>
 		</physics>
 
+
 		<!-- Include ground color -->
 		<include>
 	    		<uri>model://cricket_ground</uri>
@@ -64,6 +65,34 @@
 				<kinematic>false</kinematic>
 				<gravity>true</gravity>
 			</link>
+		</model>
+
+		<!-- Challange Area -->
+
+		<model name='main_area'>
+			<static>true</static>
+			<pose>-65 25 0.001 0 -0 0</pose>
+			<link name='link'>
+		    		<visual name='visual'>
+		      		<cast_shadows>false</cast_shadows>
+			      	<geometry>
+				        	<plane>
+					          	<normal>0 0 1</normal>
+					          	<size>100 60</size>
+				        	</plane>
+				      </geometry>
+		      		<material>
+		        		<script>
+		      			<uri>model://cricket_ground/materials/scripts</uri>
+		      			<uri>model://cricket_ground/materials/textures</uri>
+		      			<name>cricket_ground/Image</name>
+		        		</script>
+		      		</material>
+		    		</visual>
+		    		<self_collide>false</self_collide>
+		    		<kinematic>false</kinematic>
+		    		<gravity>true</gravity>
+	  		</link>
 		</model>
 
 		<!-- Droping Area Model -->

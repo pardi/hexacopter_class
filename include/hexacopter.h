@@ -34,13 +34,13 @@
 
 
 #define BATTERY_MIN_V 14.5
-#define RELEASE_RC	65536
+#define RELEASE_RC	0 //65535
 
 #define BUTTON_OFF	false
 #define BUTTON_ON	true
 
 
-#define K_P  ((altitude_> 12)?0.9:(altitude_> 3)?0.4:(altitude_> 2)?0.32:(altitude_> 1.2)?0.2:0.05)
+#define K_P  ((altitude_> 12)?0.9:(altitude_> 3)?0.4:(altitude_> 2)?0.32:(altitude_> 1.2)?0.3:0.2)
 #define K_I  0.01
 #define sgn(x) ((x>0)?1:-1)
 
@@ -48,9 +48,10 @@ namespace hxcpt {
 
 	enum Guide_Mode { 	
 						GUIDED 		= 0, 
-						LOITER 		= 1, 
+						LOITER 			= 1, 
 						STABILIZE 		= 2,
 						ALT_HOLD		= 3,
+						LAND 			= 4,
 						NOT_INIT 		= 255,
 					};
 
@@ -78,6 +79,9 @@ namespace hxcpt {
 		bool land();
 
 		bool set_ORCIn(int, int, int, int, int ch5 = 0, int ch6  = 0, int ch7 = 0, int ch8 = 0);
+		bool send_RCmsg(const std::vector<int>);
+		bool reset_ORCIn();
+
 		bool setlocaltwist(geometry_msgs::Twist);
 
 		void spin();
@@ -129,6 +133,7 @@ namespace hxcpt {
 
 		// External RC command
 		mavros_msgs::RCIn rcIn_;
+		bool rcStart_;
 
 		// ROS
 		
