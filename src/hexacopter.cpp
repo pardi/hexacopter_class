@@ -68,6 +68,23 @@ hexacopter::hexacopter(ros::NodeHandle* n, bool verbose){
 	mavros_overrideIN_pub_ = n_->advertise<mavros_msgs::OverrideRCIn>("/mavros/rc/override", 10);
     	altitude_sub_ = n_->subscribe("/mavros/global_position/rel_alt", 1, &hexacopter::altitudeCallback, this);
 
+	// Service to get params
+
+	ros::ServiceClient client = n_->serviceClient<ids_viewer::IDSparams>("ids_viewer/params");
+
+	ids_viewer::IDSparams srv;
+
+	if (client.call(srv)){
+
+		width_ = srv.response.width;
+		height_ = srv.response.height;
+
+	}else{
+		width_ = STD_VID_WIDTH;
+		height_ = STD_VID_HEIGHT;		
+	}
+
+
 	// Init variables
 	
 	mode_ = NOT_INIT;
@@ -536,8 +553,10 @@ void hexacopter::control_rule(){
 
 	ros::Rate r(15);
 
-	double err_x, err_y;
-	double sum_err_x = 0, sum_err_y = 0;
+	double err_x, err_y, err_yaw;
+	double sum_err_x = 0, sum_err_y = 0, sum_err_yaw = 0;
+
+	double x1[3] = {0, 0, 0}, x2[3] = {0, 0, 0};
 
 	double dt = 0.067;
 	
@@ -549,45 +568,47 @@ void hexacopter::control_rule(){
 		// 	continue;
 		// }
 
-		// if (!rcStart_)
-		// 	continue;
+		if (!rcStart_)
+			continue;
 
-		if (mode_ == GUIDED)
+		if (mode_ != LOITER || mode_ != ALT_HOLD )
 			continue;
 
 		// Operator takes control
 
-		// if (rcIn_.channels[7] > BASERC){ // swith ON from transmitter
-		// 	if (!lbstate_) // laste stete was OFF
-		// 		reset_ORCIn();
+		if (rcIn_.channels[7] > BASERC){ // swith ON from transmitter
+			if (!lbstate_) // laste stete was OFF
+				reset_ORCIn();
 
-		// 	lbstate_ = BUTTON_ON;
+			lbstate_ = BUTTON_ON;
 
-		// 	ROS_INFO("BUTTON_ON - RC control");
-		// 	continue;
+			// ROS_INFO("BUTTON_ON - RC control");
+			continue;
 
-		// }else{ // switch OFF from transmitter
-		// 	if (lbstate_){ // last state was ON
+		}else{ // switch OFF from transmitter
+			if (lbstate_){ // last state was ON
 
-		// 		// Init control vars
-		// 		targetRef_.x = 0;
-		// 		targetRef_.x = 0;
+				// Init control vars
+				targetRef_.x = 0;
+				targetRef_.x = 0;
 
-		// 		sum_err_x = 0;
-		// 		sum_err_y = 0;
-		// 	}
+				sum_err_x = 0;
+				sum_err_y = 0;
+			}
 			
-		// 	lbstate_ = BUTTON_OFF;
-		// 	ROS_INFO("BUTTON_OFF - ROS control");
-		// }
+			lbstate_ = BUTTON_OFF;
+			// ROS_INFO("BUTTON_OFF - ROS control");
+		}
 
 			
 
-		err_x = (1280 / 2) - targetRef_.x;
-		err_y = (720 /  2) - targetRef_.y;
+		err_x = (width_ / 2) - targetRef_.x; // 1280
+		err_y = (height_/  2) - targetRef_.y; //360
+		// err_yaw = yaw_ - targetRef_.yaw;
 
 		sum_err_x += err_x * dt;
-		sum_err_y += err_y * dt;
+		sum_err_y += err_y * dt;	
+		sum_err_yaw += err_yaw * dt;
 
 		// Anti wind-UP
 
@@ -597,32 +618,42 @@ void hexacopter::control_rule(){
 		if (sum_err_y > 100)
 			sum_err_y = 100;
 
+		if (sum_err_yaw > 100)
+			sum_err_yaw = 100;
+
 		if (sum_err_x < -100)
 			sum_err_x = -100;
 		
 		if (sum_err_y < -100)
 			sum_err_y = -100;
 
+		if (sum_err_yaw < -100)
+			sum_err_yaw = -100;
+
 		// Calculate Roll and Pitch depending on the mode
 		if (mode_ == LOITER && budgetResidual_ > 0 ){
+
+			// Roll = BASERC - C(err_x, &x1[0], &x2[0]);
+			// Pitch = BASERC - C(err_x, &x1[1], &x2[1]);
 			
-			Roll = BASERC - err_x * K_P + K_I * sum_err_x;
-			Pitch = BASERC - err_y * K_P + K_I * sum_err_y;
+			Roll = BASERC - K_P * err_x + K_I * sum_err_x;
+			Pitch = BASERC - K_P * err_y + K_I * sum_err_y;
+			// Yaw = BASERC - K_P * err_yaw  + K_I * sum_err_yaw;
 
 			// Throttle = BASERC - (altitude_ - 1) * 100;
 			if (refVariance_ > 100){// && altitude_ > 0.5){
-				// Throttle = BASERC  - 100; 	
+				Throttle = BASERC  - 100; 	
 				//if (altitude_ > 0.5)
-					Throttle = BASERC - ((altitude_ - 0.2) * 10 + 50);
+					// Throttle = BASERC - ((altitude_ - 0.2) * 10 + 50);
 				//else
-				//	Throttle = BASERC  - 100; 			
 			}
 			else
 				Throttle = BASERC;  
 		}else{
 			Roll = BASERC;
 			Pitch = BASERC;
-			Throttle = BASERC;  
+			Throttle = BASERC;
+			Yaw = BASERC;  
 		}  
 
 		// std::cout << Roll << " " << Pitch << " " << Throttle << std::endl;
@@ -687,6 +718,17 @@ bool hexacopter::setSYSID_MYGCS()
 
 }
 
+double hexacopter::C(const double x, double* z1, double* z2){
+
+	double y = 0;
+
+	y = b1 * x + *z1; // y(k) = b(1) x(k) + z1(k-1)
+	*z1 = b2 * x + *z2  - a2 * y; // z1(k) = b(2) x(k) + z2(k-1) - a(2) y(k)
+	*z2 = b3 * x  - a3 * y; // z2(k) = b(3) x(k)  - a(3) y(k)
+
+	return y;
+}
+
 
 
 void hexacopter::spin(){
@@ -702,11 +744,11 @@ void hexacopter::spin(){
 
 	// Set MODE
 
-	set_Mode(GUIDED);
+	set_Mode(STABILIZE);
 
 	// Free RC from previously override
 
-	// reset_ORCIn();
+	reset_ORCIn();
 
 	if (verbose_ == true)
 		ROS_INFO("Arming...");
@@ -714,7 +756,7 @@ void hexacopter::spin(){
 	while (!set_arm(ARM) && ros::ok());
 
 	// ATTENTION MOTOR ARM
-	takeoff(10);
+	// takeoff(10);
 	char dir;
 	ros::Rate r(10);
 	bool set_loiter = true;
@@ -724,9 +766,10 @@ void hexacopter::spin(){
 		if (altitude_ > 9.5 && set_loiter){
 			set_Mode(LOITER);
 			// First Trial
-			// usleep(5000 * 1000);
-			// break;
+			usleep(10000 * 1000);
+			break;
 			set_loiter = false;
+
 		}
 
 		if (!set_loiter && altitude_ < 0.6)

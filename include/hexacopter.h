@@ -23,10 +23,15 @@
 #include <geometry_msgs/TwistStamped.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PointStamped.h>
+#include <ids_viewer/IDSparams.h>
 
-// Standardi LIBs
+// Standard LIBs
 #include <termios.h>
 #include <thread>
+
+#define STD_VID_WIDTH 	1280 
+#define STD_VID_HEIGHT 	720
+#define STD_VID_BPP 		24
 
 #define MINRC   1150
 #define BASERC  1500
@@ -38,6 +43,14 @@
 
 #define BUTTON_OFF	false
 #define BUTTON_ON	true
+
+
+// Filter parameters
+#define b1 663416.2537313433
+#define b2 -1326699,83084577
+#define b3 663283.5837479271
+#define a2 1.323383084577114
+#define a3 0.330016583747927
 
 
 #define K_P  ((altitude_> 12)?0.9:(altitude_> 3)?0.4:(altitude_> 2)?0.32:(altitude_> 1.2)?0.3:0.2)
@@ -101,6 +114,7 @@ namespace hxcpt {
 		int getch();
 		bool setSYSID_MYGCS();
 
+		double C(const double, double*, double*);
 
 		bool str2Guide_Mode(const std::string, uint8_t&);
 		bool Guide_Mode2str(const uint8_t, std::string&);
@@ -119,7 +133,7 @@ namespace hxcpt {
 		// Control step
 		int8_t roll_step_, pitch_step_, yaw_step_, throttle_step_;
 		
-		// Release/hold flag on RC override,, last button state
+		// Release/hold flag on RC override, last button state
 		bool lbstate_; 
 
 		std::thread* th_control_rule_;
@@ -131,6 +145,9 @@ namespace hxcpt {
 		float refVariance_;
 		ros::Time targetStamp_;
 
+		// Camera params
+		int width_, height_;
+		
 		// External RC command
 		mavros_msgs::RCIn rcIn_;
 		bool rcStart_;
