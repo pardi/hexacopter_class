@@ -464,6 +464,17 @@ bool hexacopter::str2Guide_Mode(const std::string str, uint8_t& mode){
 				return true;
 		}
 
+		if (!strcmp(str.c_str(), "LAND")){
+				mode = LAND;
+				return true;
+		}
+
+		if (!strcmp(str.c_str(), "AUTO")){
+				mode = AUTO;
+				return true;
+		}
+
+
 		// Set Stabilize as DEFAULT value
 		mode = STABILIZE;
 
@@ -489,6 +500,9 @@ bool hexacopter::Guide_Mode2str(const uint8_t mode, std::string& str){
 				case LAND:
 						str = "LAND";
 						break;
+				case AUTO:
+						str = "AUTO";
+						break;
 				default:{
 						// Set Stabilize as DEFAULT value
 						str = "STABILIZE";
@@ -504,7 +518,7 @@ void hexacopter::init(){
 		if (verbose_ == true)
 				ROS_INFO("Init...");
 
-		while ( ((mode_ == NOT_INIT) || (globalGPS_.status.status == NOT_INIT) || (voltage_ == NOT_INIT)) && ros::ok());
+		while ( ((mode_ == NOT_INIT) || (globalGPS_.status.status == NOT_INIT)) && ros::ok()); //|| (voltage_ == NOT_INIT)) && ros::ok());
 
 }
 
@@ -551,6 +565,8 @@ void hexacopter::control_rule(){
 	Throttle = MINRC;
 	Yaw = BASERC;
 
+	int iter = 0;
+
 	ros::Rate r(15);
 
 	double err_x, err_y, err_yaw;
@@ -568,47 +584,46 @@ void hexacopter::control_rule(){
 		// 	continue;
 		// }
 
-		if (!rcStart_)
-			continue;
+		// if (!rcStart_)
+		// 	continue;
 
-		if (mode_ != LOITER || mode_ != ALT_HOLD )
+		if (mode_ != LOITER) // XXX alt_hold option
 			continue;
 
 		// Operator takes control
 
-		if (rcIn_.channels[7] > BASERC){ // swith ON from transmitter
-			if (!lbstate_) // laste stete was OFF
-				reset_ORCIn();
+		// if (rcIn_.channels[7] > BASERC){ // switch ON from transmitter
+		// 	if (!lbstate_) // last  state was OFF
+		// 		reset_ORCIn();
 
-			lbstate_ = BUTTON_ON;
+		// 	lbstate_ = BUTTON_ON;
 
-			// ROS_INFO("BUTTON_ON - RC control");
-			continue;
+		// 	// ROS_INFO("BUTTON_ON - RC control");
+		// 	continue;
 
-		}else{ // switch OFF from transmitter
-			if (lbstate_){ // last state was ON
+		// }else{ // switch OFF from transmitter
+		// 	if (lbstate_){ // last state was ON
 
-				// Init control vars
-				targetRef_.x = 0;
-				targetRef_.x = 0;
+		// 		// Init control vars
+		// 		targetRef_.x = 0;
+		// 		targetRef_.x = 0;
 
-				sum_err_x = 0;
-				sum_err_y = 0;
-			}
+		// 		sum_err_x = 0;
+		// 		sum_err_y = 0;
+		// 	}
 			
-			lbstate_ = BUTTON_OFF;
-			// ROS_INFO("BUTTON_OFF - ROS control");
-		}
+		// 	lbstate_ = BUTTON_OFF;
+		// 	// ROS_INFO("BUTTON_OFF - ROS control");
+		// }
 
-			
-
+		
 		err_x = (width_ / 2) - targetRef_.x; // 1280
-		err_y = (height_/  2) - targetRef_.y; //360
+		err_y = (height_/  2) - targetRef_.y;  //720
 		// err_yaw = yaw_ - targetRef_.yaw;
 
 		sum_err_x += err_x * dt;
 		sum_err_y += err_y * dt;	
-		sum_err_yaw += err_yaw * dt;
+		// sum_err_yaw += err_yaw * dt;
 
 		// Anti wind-UP
 
@@ -642,7 +657,15 @@ void hexacopter::control_rule(){
 
 			// Throttle = BASERC - (altitude_ - 1) * 100;
 			if (refVariance_ > 100){// && altitude_ > 0.5){
-				Throttle = BASERC  - 100; 	
+				//if (altitude_ < 1.5 && iter > 1000)
+				
+				Throttle = BASERC  - 150;//100;
+				
+				// else{
+				// 	Throttle = BASERC;
+				// 	iter++;
+				// }
+
 				//if (altitude_ > 0.5)
 					// Throttle = BASERC - ((altitude_ - 0.2) * 10 + 50);
 				//else
@@ -652,8 +675,12 @@ void hexacopter::control_rule(){
 		}else{
 			Roll = BASERC;
 			Pitch = BASERC;
-			Throttle = BASERC;
-			Yaw = BASERC;  
+			Yaw = BASERC; 
+
+			if (( altitude_ < 25 ) && ( budgetResidual_ < -50 ))
+				Throttle = BASERC + 80;
+			 else
+			 	Throttle = BASERC;
 		}  
 
 		// std::cout << Roll << " " << Pitch << " " << Throttle << std::endl;
@@ -729,7 +756,79 @@ double hexacopter::C(const double x, double* z1, double* z2){
 	return y;
 }
 
+mavros_msgs::Waypoint hexacopter::generateWP( float latitude, float longitude, float alt, int command, int frame){
 
+	mavros_msgs::Waypoint wp;
+
+	wp.frame = frame; // Default Global Frame
+	wp. command = command;
+	wp.is_current = false;
+	wp.autocontinue = false;
+	wp.param1 = 0;
+	wp.param2 = 0;
+	wp.param3 = 0;
+	wp.param4 = 0;
+	wp.x_lat = latitude;
+	wp.y_long = longitude;
+	wp.z_alt = alt;
+
+	return wp;
+
+
+}
+
+void hexacopter::setWPMission(){
+
+	// Load WPs
+
+	sendWP(generateWP(-35.3654, 149.1456, 650));
+
+}
+
+bool hexacopter::sendWP(mavros_msgs::Waypoint wp){
+
+
+	mavros_msgs::WaypointPush srv_wp;
+
+	// Load WPs
+
+	srv_wp.request.waypoints.push_back(wp);
+
+	// Send wp mission procedure
+
+	ros::ServiceClient waypointMission_cl = n_->serviceClient<mavros_msgs::WaypointPush>("/mavros/mission/push");
+
+	if(waypointMission_cl.call(srv_wp)){
+		if (verbose_ == true)
+			ROS_ERROR("srv_wp send ok %d", srv_wp.response.success);
+		return true;
+	}else{
+		if (verbose_ == true)
+			ROS_ERROR("Failed push WP");
+		
+		return false;
+	}
+
+}
+
+double hexacopter::distWPs(mavros_msgs::Waypoint wp1, mavros_msgs::Waypoint wp2){
+
+	const double EARTH_RADIUS_KM = 6371;
+
+	double lat1_rad = wp1.x_lat * M_PI / 180.0;
+	double long1_rad = wp1.y_long * M_PI / 180.0;
+	
+	double lat2_rad = wp2.x_lat * M_PI / 180.0;
+	double long2_rad = wp2.y_long * M_PI / 180.0;
+
+	double dlat = lat2_rad - lat1_rad;
+	double dlon = long2_rad - long1_rad;
+
+	double a = pow(sin(dlat / 2), 2) + cos(lat1_rad) * cos(lat2_rad) * pow(sin(dlon / 2), 2);
+
+	return   2 * EARTH_RADIUS_KM * atan2(sqrt(a), sqrt(1 - a));
+
+}
 
 void hexacopter::spin(){
 
@@ -744,16 +843,16 @@ void hexacopter::spin(){
 
 	// Set MODE
 
-	set_Mode(STABILIZE);
+	// set_Mode(STABILIZE);
 
 	// Free RC from previously override
 
 	reset_ORCIn();
 
-	if (verbose_ == true)
-		ROS_INFO("Arming...");
+	// if (verbose_ == true)
+	// 	ROS_INFO("Arming...");
 	
-	while (!set_arm(ARM) && ros::ok());
+	// while (!set_arm(ARM) && ros::ok());
 
 	// ATTENTION MOTOR ARM
 	// takeoff(10);
@@ -761,13 +860,34 @@ void hexacopter::spin(){
 	ros::Rate r(10);
 	bool set_loiter = true;
 		
+	//---> Seek and hunt <---
+
+	// setPMission();
+
+	// set_mode(AUTO);
+	
+	//-----------------------------------
+
 	while(ros::ok()){
 
+		//---> Seek and hunt <---
+
+		// if (budgetResidual_ > 0)
+		// 	set_mode(LOITER);
+		// else 
+		// 	if (budgetResidual_ < -300 && mode_ == LOITER)
+		// 		set_mode(AUTO);				
+
+		//-----------------------------------
+
+
 		if (altitude_ > 9.5 && set_loiter){
-			set_Mode(LOITER);
-			// First Trial
-			usleep(10000 * 1000);
-			break;
+
+
+			// set_Mode(LOITER);
+			// // First Trial
+			// usleep(10000 * 1000);
+			// break;
 			set_loiter = false;
 
 		}

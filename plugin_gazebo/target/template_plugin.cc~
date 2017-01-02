@@ -86,7 +86,7 @@ namespace gazebo
 			// speed_ = 4.167; // m/s, max speed
 			// speed_ = 2.778; // m/s, max speed
 
-			speed_ = 1.5;
+			speed_ = 1;
 
 			step_ = STEP_TIME * speed_;  
  			step_angle_ = (step_  * 360) / (2 * M_PI *  RADIUS);

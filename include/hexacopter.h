@@ -13,6 +13,7 @@
 #include <mavros_msgs/State.h>
 #include <mavros_msgs/OverrideRCIn.h>
 #include <mavros_msgs/RCIn.h>
+#include <mavros_msgs/WaypointPush.h>
 #include <mavros_msgs/BatteryStatus.h>
 #include <sensor_msgs/NavSatFix.h>
 #include <geometry_msgs/Point.h>
@@ -33,9 +34,9 @@
 #define STD_VID_HEIGHT 	720
 #define STD_VID_BPP 		24
 
-#define MINRC   1150
-#define BASERC  1500
-#define MAXRC   1800
+#define MINRC   1000
+#define BASERC  1490
+#define MAXRC   1850
 
 
 #define BATTERY_MIN_V 14.5
@@ -53,8 +54,8 @@
 #define a3 0.330016583747927
 
 
-#define K_P  ((altitude_> 12)?0.9:(altitude_> 3)?0.4:(altitude_> 2)?0.32:(altitude_> 1.2)?0.3:0.2)
-#define K_I  0.01
+#define K_P  5//((altitude_> 12)?0.9:(altitude_> 3)?0.4:(altitude_> 2)?0.32:(altitude_> 1.2)?0.2:0.15)
+#define K_I  0.15
 #define sgn(x) ((x>0)?1:-1)
 
 namespace hxcpt {
@@ -65,7 +66,8 @@ namespace hxcpt {
 						STABILIZE 		= 2,
 						ALT_HOLD		= 3,
 						LAND 			= 4,
-						NOT_INIT 		= 255,
+						AUTO			= 5,
+						NOT_INIT 		= 255
 					};
 
 	enum arm_mode 	{ 	
@@ -115,6 +117,10 @@ namespace hxcpt {
 		bool setSYSID_MYGCS();
 
 		double C(const double, double*, double*);
+		mavros_msgs::Waypoint generateWP(float, float, float, int command = 16, int frame = 0);
+		void setWPMission();
+		bool sendWP(mavros_msgs::Waypoint);
+		double distWPs(mavros_msgs::Waypoint, mavros_msgs::Waypoint);
 
 		bool str2Guide_Mode(const std::string, uint8_t&);
 		bool Guide_Mode2str(const uint8_t, std::string&);
