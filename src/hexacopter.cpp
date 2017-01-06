@@ -37,6 +37,11 @@ hexacopter::hexacopter(int argc, char** argv, bool verbose){
 	refVariance_ = 0;
 	targetStamp_ = ros::Time::now();
 
+	// Get info about the challenge
+
+	n_->param("/mark_follower/challenge", challenge_, false);
+
+
 	// Thread
 
 	th_spin_ = new std::thread(&hexacopter::spin, this);
@@ -84,6 +89,9 @@ hexacopter::hexacopter(ros::NodeHandle* n, bool verbose){
 		height_ = STD_VID_HEIGHT;		
 	}
 
+	// Get info about the challenge
+
+	n_->param("/mark_follower/challenge", challenge_, false);
 
 	// Init variables
 	
@@ -575,117 +583,138 @@ void hexacopter::control_rule(){
 	double x1[3] = {0, 0, 0}, x2[3] = {0, 0, 0};
 
 	double dt = 0.067;
-	
+
+	resetIntegralComponent_ = false;
 
 	while(ros::ok()){
 
-		// if (!armed_){
-		// 	reset_ORCIn();
-		// 	continue;
-		// }
 
-		// if (!rcStart_)
-		// 	continue;
-
-		if (mode_ != LOITER) // XXX alt_hold option
+		if (!rcStart_)
 			continue;
 
-		// Operator takes control
+		switch(challenge_){
 
-		// if (rcIn_.channels[7] > BASERC){ // switch ON from transmitter
-		// 	if (!lbstate_) // last  state was OFF
-		// 		reset_ORCIn();
+			case FIRST_CHALLENGE:{
 
-		// 	lbstate_ = BUTTON_ON;
+				if ( Fstatus_ == PILOT_CTRL || !(mode_ == LOITER && Fstatus_ == APPROACHING) ) // XXX alt_hold option
+					continue;
 
-		// 	// ROS_INFO("BUTTON_ON - RC control");
-		// 	continue;
+			}break;
+			default: {// THIRD_CHALLENGE:
 
-		// }else{ // switch OFF from transmitter
-		// 	if (lbstate_){ // last state was ON
+				if ( Fstatus_ == PILOT_CTRL || !(mode_ == LOITER && (Fstatus_ == APPROACHING || Fstatus_ == RELEASE_OBJ || Fstatus_ == LIFT_OBJ)) ) // XXX alt_hold option
+					continue;
+			}			
+		}
 
-		// 		// Init control vars
-		// 		targetRef_.x = 0;
-		// 		targetRef_.x = 0;
+		// Reset components On switch change
 
-		// 		sum_err_x = 0;
-		// 		sum_err_y = 0;
-		// 	}
-			
-		// 	lbstate_ = BUTTON_OFF;
-		// 	// ROS_INFO("BUTTON_OFF - ROS control");
-		// }
+		if (resetIntegralComponent_){ 
 
+			// Init control vars
+			targetRef_.x = 0;
+			targetRef_.x = 0;
+
+			sum_err_x = 0;
+			sum_err_y = 0;
+
+			resetIntegralComponent_ = false;
+		}
+
+		// ----------------------------------------------------> Control <-------------------------------------------------------------
+
+		switch(Fstatus_){
 		
-		err_x = (width_ / 2) - targetRef_.x; // 1280
-		err_y = (height_/  2) - targetRef_.y;  //720
-		// err_yaw = yaw_ - targetRef_.yaw;
+			case APPROACHING:{
 
-		sum_err_x += err_x * dt;
-		sum_err_y += err_y * dt;	
-		// sum_err_yaw += err_yaw * dt;
+				err_x = (width_ / 2) - targetRef_.x; 
+				err_y = (height_/  2) - targetRef_.y;  
+	//	 		err_yaw = yaw_ - targetRef_.yaw;
 
-		// Anti wind-UP
+				sum_err_x += err_x * dt;
+				sum_err_y += err_y * dt;	
+	//	 		sum_err_yaw += err_yaw * dt;
 
-		if (sum_err_x > 100)
-			sum_err_x = 100;
-		
-		if (sum_err_y > 100)
-			sum_err_y = 100;
-
-		if (sum_err_yaw > 100)
-			sum_err_yaw = 100;
-
-		if (sum_err_x < -100)
-			sum_err_x = -100;
-		
-		if (sum_err_y < -100)
-			sum_err_y = -100;
-
-		if (sum_err_yaw < -100)
-			sum_err_yaw = -100;
-
-		// Calculate Roll and Pitch depending on the mode
-		if (mode_ == LOITER && budgetResidual_ > 0 ){
-
-			// Roll = BASERC - C(err_x, &x1[0], &x2[0]);
-			// Pitch = BASERC - C(err_x, &x1[1], &x2[1]);
-			
-			Roll = BASERC - K_P * err_x + K_I * sum_err_x;
-			Pitch = BASERC - K_P * err_y + K_I * sum_err_y;
-			// Yaw = BASERC - K_P * err_yaw  + K_I * sum_err_yaw;
-
-			// Throttle = BASERC - (altitude_ - 1) * 100;
-			if (refVariance_ > 100){// && altitude_ > 0.5){
-				//if (altitude_ < 1.5 && iter > 1000)
 				
-				Throttle = BASERC  - 150;//100;
-				
-				// else{
-				// 	Throttle = BASERC;
-				// 	iter++;
-				// }
+				// Anti wind-UP
 
-				//if (altitude_ > 0.5)
-					// Throttle = BASERC - ((altitude_ - 0.2) * 10 + 50);
-				//else
+				if (sum_err_x > 100)
+					sum_err_x = 100;
+				
+				if (sum_err_y > 100)
+					sum_err_y = 100;
+
+				if (sum_err_yaw > 100)
+					sum_err_yaw = 100;
+
+				if (sum_err_x < -100)
+					sum_err_x = -100;
+				
+				if (sum_err_y < -100)
+					sum_err_y = -100;
+
+				if (sum_err_yaw < -100)
+					sum_err_yaw = -100;
+
+
+
+				// Calculate Roll and Pitch
+				if (budgetResidual_ > 0){
+					
+					Roll = BASERC - K_P * err_x + K_I * sum_err_x;
+					Pitch = BASERC - K_P * err_y + K_I * sum_err_y;
+					Yaw = BASERC;		// Yaw = BASERC - K_P * err_yaw  + K_I * sum_err_yaw;
+
+					if (refVariance_ > 100) {
+
+						Throttle = BASERC  - 150;
+				
+						/*
+						/// Controller altitude dependant
+
+						if (altitude_ > 0.5)
+							Throttle = BASERC - ((altitude_ - 0.2) * 10 + 50);
+						else
+							Throttle = BASERC - 80;
+						*/
+
+					}else
+						Throttle = BASERC;  
+
+				}else{
+
+					Roll = BASERC;
+					Pitch = BASERC;
+					Yaw = BASERC; 
+					Throttle = BASERC;
+
+					if (( altitude_ < MAX_ALTITUDE ) && ( budgetResidual_ < -50 ))
+						Throttle += 80;
+				}  
+			}break;
+			case LIFT_OBJ:{
+
+				Roll = BASERC;
+				Pitch = BASERC;
+				Yaw = BASERC; 
+				Throttle = BASERC + 100;
+
+			}break;
+			case RELEASE_OBJ:{
+
+				Roll = BASERC;
+				Pitch = BASERC;
+				Yaw = BASERC; 
+				Throttle = BASERC - 100;				
+
 			}
-			else
-				Throttle = BASERC;  
-		}else{
-			Roll = BASERC;
-			Pitch = BASERC;
-			Yaw = BASERC; 
+		}
 
-			if (( altitude_ < 25 ) && ( budgetResidual_ < -50 ))
-				Throttle = BASERC + 80;
-			 else
-			 	Throttle = BASERC;
-		}  
-
-		// std::cout << Roll << " " << Pitch << " " << Throttle << std::endl;
+		// std::cout << Roll << " " << Pitch << " " << Yaw << " " << Throttle << std::endl;
 
 		set_ORCIn(Roll, Pitch, Throttle, Yaw);
+
+		// --------------------------------------------------------------------------------------------------------------------------------- 
 
 		r.sleep();
 	}	
@@ -830,6 +859,28 @@ double hexacopter::distWPs(mavros_msgs::Waypoint wp1, mavros_msgs::Waypoint wp2)
 
 }
 
+bool hexacopter::check_grasp(){
+	return true;
+}
+
+
+bool hexacopter::hold_on_DZ(bool hold_on){
+
+	uav_semaphore::holdDropZone srv;
+
+	// Service to get DZ
+
+	ros::ServiceClient client = n_->serviceClient<uav_semaphore::holdDropZone>("uav_semaphore/hold_drop_zone");
+
+	srv.request.uav_id = UAV_ID;
+	srv.request.hold_on = hold_on;
+
+	if (client.call(srv))
+		return srv.response.status;
+
+	return false;
+}
+
 void hexacopter::spin(){
 
 	// Init functions
@@ -841,73 +892,321 @@ void hexacopter::spin(){
 		return;
 	}
 
-	// Set MODE
+	char dir;
+	ros::Rate r(10);
+	bool set_loiter = true;
+	float preset_h;
 
-	// set_Mode(STABILIZE);
+	uav_semaphore::flyZone srv;
+
+	do{
+		// Service to get preset altitude
+
+		ros::ServiceClient client = n_->serviceClient<uav_semaphore::flyZone>("uav_semaphore/hold_fly_zone");
+
+		srv.request.uav_id = UAV_ID;
+		srv.request.hold_on = true;
+
+		if (client.call(srv))
+			preset_h = srv.response.meters;
+		
+	}while(srv.response.status == false);
+
+	// Initial Machine State status
+
+	Fstatus_ = TAKEOFF;
 
 	// Free RC from previously override
 
 	reset_ORCIn();
+
+
+	//--------------------> PRE-Takeoff operation <--------------------
+
+	//  !!! ATTENTION MOTOR ARM !!!
+
+	// Set MODE
+
+	// set_Mode(STABILIZE);
 
 	// if (verbose_ == true)
 	// 	ROS_INFO("Arming...");
 	
 	// while (!set_arm(ARM) && ros::ok());
 
-	// ATTENTION MOTOR ARM
-	// takeoff(10);
-	char dir;
-	ros::Rate r(10);
-	bool set_loiter = true;
+	// takeoff(preset_h);
+
+	// -------------------------------------------------------------------------------
 		
-	//---> Seek and hunt <---
+	//------------------------> Seek and hunt <-------------------------
 
 	// setPMission();
 
 	// set_mode(AUTO);
 	
-	//-----------------------------------
+	// -------------------------------------------------------------------------------
+
 
 	while(ros::ok()){
 
-		//---> Seek and hunt <---
+		// Check if rcIn_ exists
 
-		// if (budgetResidual_ > 0)
-		// 	set_mode(LOITER);
-		// else 
-		// 	if (budgetResidual_ < -300 && mode_ == LOITER)
-		// 		set_mode(AUTO);				
+		if (!rcStart_)
+			continue;
+		
+		//---------------------> Operator Takes cont rol<-----------------
 
-		//-----------------------------------
+		if (rcIn_.channels[7] > BASERC){ // switch ON from transmitter
+		
+			if (!lbstate_) // last state was OFF
+				reset_ORCIn();
 
+			lbstate_ = BUTTON_ON;
 
-		if (altitude_ > 9.5 && set_loiter){
+// 			ROS_INFO("BUTTON_ON - RC control");
 
+			Fstatus_ = PILOT_CTRL;
 
-			// set_Mode(LOITER);
-			// // First Trial
-			// usleep(10000 * 1000);
-			// break;
-			set_loiter = false;
+		}else{ // switch OFF from transmitter
+
+			if (lbstate_)// last state was ON
+				resetIntegralComponent_ = true;
+
+			lbstate_ = BUTTON_OFF;
+
+// 			ROS_INFO("BUTTON_OFF - ROS control");
+
+			Fstatus_ = SEEK_AND_HUNT;
 
 		}
 
-		if (!set_loiter && altitude_ < 0.6)
-			break;
+		// -------------------------------------------------------------------------------
+
+		//---------------------> General Purpose Spin <--------------------
+
+		switch(challenge_){
+			
+			case FIRST_CHALLENGE:{
+
+				switch(Fstatus_){
+
+					case TAKEOFF:{
+						//------------------------> Takeoff operation <-------------------------
+
+						if  (altitude_  > (preset_h - 0.5) ){
+
+							// When the defined altitude is reached, set Mode to LOITER
+
+							set_Mode(LOITER);
+
+							Fstatus_ = SEEK_AND_HUNT;
+						}
+
+						// -------------------------------------------------------------------------------
+
+					}break;
+					case SEEK_AND_HUNT:{
+
+						//------------------------> Seek and hunt <-------------------------
+
+						if (budgetResidual_ > 0){
+							
+							set_Mode(LOITER);
+
+							Fstatus_ = APPROACHING;
+						}
+
+						// else 
+						// 	if (budgetResidual_ < -300 && mode_ == LOITER)
+						// 		set_mode(AUTO);				
+
+						// -------------------------------------------------------------------------------
+
+
+					}break;
+					case APPROACHING:{
+
+					// ------------------------->Approaching<------------------------------
+					
+					if (altitude_ < 0.5)
+						Fstatus_ = LANDING;						
+
+					// -------------------------------------------------------------------------------
+
+					}break;
+
+					case LANDING:{
+
+						// -------------------------> Landing <-----------------------------------
+
+							if (altitude_ < 0.6)
+								break;
+
+						// -------------------------------------------------------------------------------
+
+					}
+					default:{ // PILOT_CTRL
+
+						// -------------------------> Pilot Ctrl <-----------------------------------
+						// Autonomous Control do nothing
+						// -------------------------------------------------------------------------------
+
+					}
+				}
+			}break;
+
+			default: {// THIRD_CHALLENGE:
+
+				switch(Fstatus_){
+
+					case TAKEOFF:{
+						//------------------------> Takeoff operation <-------------------------
+
+						if  (altitude_  > (preset_h - 0.5) ){
+
+							// When the defined altitude is reached, set Mode to LOITER
+
+							set_Mode(LOITER);
+
+							Fstatus_ = SEEK_AND_HUNT;
+						}
+
+						// -------------------------------------------------------------------------------
+
+					}break;
+					case SEEK_AND_HUNT:{
+
+						//------------------------> Seek and hunt <-------------------------
+
+						if (budgetResidual_ > 0){
+							
+							set_Mode(LOITER);
+
+							Fstatus_ = APPROACHING;
+						}
+
+						// else 
+						// 	if (budgetResidual_ < -300 && mode_ == LOITER)
+						// 		set_mode(AUTO);				
+
+						// -------------------------------------------------------------------------------
+
+
+					}break;
+					case APPROACHING:{
+
+						// ------------------------->Approaching<------------------------------
+						
+						if (altitude_ < 0.5)
+							Fstatus_ = GRASPING;						
+
+						// -------------------------------------------------------------------------------
+
+					}break;
+					case GRASPING:{
+
+						// ---------------------------->Grasping<--------------------------------
+
+						// Call Fcn to activate grasp
+
+						// Check Grasping
+						if (check_grasp())
+							Fstatus_ = LIFT_OBJ;
+						else
+							Fstatus_ = APPROACHING;
+							
+						// -------------------------------------------------------------------------------
+
+					}break;
+					case LIFT_OBJ:{
+
+						// --------------------------->Lift Object<--------------------------------
+						
+						if (altitude_ > preset_h - .5)
+							Fstatus_ = DRAG_TO_DZ;			
+
+						// -------------------------------------------------------------------------------
+
+					}break;
+					case DRAG_TO_DZ:{
+
+						// --------------------->Drag object to DZ<--------------------------
+						
+						//	Set WP
+						// 	GO to WP
+
+						if (hold_on_DZ(true))
+							Fstatus_ = LOCATE_DROP_BOX;
+
+						//	Set WP
+						// 	GO to WP
+
+						// -------------------------------------------------------------------------------
+
+
+					}break;
+					case LOCATE_DROP_BOX:{
+
+						// ---------------------->Locate drop box<---------------------------
+						
+						// Request the location of the DB to mark_follower
+						// 
+
+						Fstatus_ == RELEASE_OBJ;
+
+						// -------------------------------------------------------------------------------
+
+					}break;
+					case PILOT_CTRL:{
+
+						// -------------------------> Pilot Ctrl <-----------------------------------
+						// Autonomous Control do nothing
+						// -------------------------------------------------------------------------------
+
+					}break;
+					default:{ //RELEASE_OBJ
+
+						// ------------------------>Release object<----------------------------
+						
+
+						if (altitude_ < 0.5){
+
+							// Release Grasp
+
+							if (hold_on_DZ(false)){
+						
+								// Reach Central Position
+
+								Fstatus_ = SEEK_AND_HUNT;
+							}
+						}
+
+						// -------------------------------------------------------------------------------
+
+					}
+				}
+			}
+		}
+
+		// -------------------------------------------------------------------------------
 
 		r.sleep();
 	}
 
 
-	// ATTENTION MOTOR ARM
+	// -------------------------> Landing <-----------------------------------
+
 	land();
 
 	while(altitude_ > 0.1);
 
+	// !!! ATTENTION MOTOR DISARM !!!
 	if (verbose_ == true)
 		ROS_INFO("Disarming...");
 	
-	// while (!set_arm(DISARM) && ros::ok());
+	while (!set_arm(DISARM) && ros::ok());
+
+	// -------------------------------------------------------------------------------
 
 }
 

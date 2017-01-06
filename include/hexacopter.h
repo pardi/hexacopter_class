@@ -25,6 +25,8 @@
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PointStamped.h>
 #include <ids_viewer/IDSparams.h>
+#include <uav_semaphore/flyZone.h>
+#include <uav_semaphore/holdDropZone.h>
 
 // Standard LIBs
 #include <termios.h>
@@ -45,6 +47,11 @@
 #define BUTTON_OFF	false
 #define BUTTON_ON	true
 
+#define FIRST_CHALLENGE		0
+#define THIRD_CHALLENGE		1
+
+#define MAX_ALTITUDE 20
+#define UAV_ID 1
 
 // Filter parameters
 #define b1 663416.2537313433
@@ -74,6 +81,22 @@ namespace hxcpt {
 						ARM 		= true,
 						DISARM 	= false
 					};
+
+
+	enum FState	{ 	
+						SEEK_AND_HUNT,
+						STRATEGY_MAKER,
+						APPROACHING,
+						GRASPING,
+						LIFT_OBJ,
+						DRAG_TO_DZ,
+						LOCATE_DROP_BOX,
+						RELEASE_OBJ,
+						LANDING,
+						TAKEOFF,
+						PILOT_CTRL				
+					};
+
 
 	class hexacopter{
 
@@ -121,6 +144,9 @@ namespace hxcpt {
 		void setWPMission();
 		bool sendWP(mavros_msgs::Waypoint);
 		double distWPs(mavros_msgs::Waypoint, mavros_msgs::Waypoint);
+		bool check_grasp();
+		bool hold_on_DZ(bool);
+
 
 		bool str2Guide_Mode(const std::string, uint8_t&);
 		bool Guide_Mode2str(const uint8_t, std::string&);
@@ -141,6 +167,7 @@ namespace hxcpt {
 		
 		// Release/hold flag on RC override, last button state
 		bool lbstate_; 
+		bool resetIntegralComponent_;
 
 		std::thread* th_control_rule_;
 		std::thread* th_spin_;
@@ -157,6 +184,10 @@ namespace hxcpt {
 		// External RC command
 		mavros_msgs::RCIn rcIn_;
 		bool rcStart_;
+
+		// Challenge information
+		bool challenge_;
+		FState Fstatus_;
 
 		// ROS
 		
