@@ -84,7 +84,7 @@ namespace hxcpt {
 
 
 	enum FState	{ 	
-						SEEK_AND_HUNT,
+						SEEKING,
 						STRATEGY_MAKER,
 						APPROACHING,
 						GRASPING,

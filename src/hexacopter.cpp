@@ -66,7 +66,7 @@ hexacopter::hexacopter(ros::NodeHandle* n, bool verbose){
 	mavros_rcIn_sub_ = n_->subscribe("/mavros/rc/in", 1, &hexacopter::rcINCallback, this);
 	// Target info by camera recognition
 
-	target_pos_sub_ = n->subscribe("/ids_rec/pose", 100, &hexacopter::markposeCallback, this);
+	target_pos_sub_ = n->subscribe("/mark_follower/target_pose", 100, &hexacopter::markposeCallback, this);
 
 	// Publisher
 	
@@ -952,9 +952,9 @@ void hexacopter::spin(){
 		// Check if rcIn_ exists
 
 		if (!rcStart_)
-			continue;
-		
-		//---------------------> Operator Takes cont rol<-----------------
+			continue;		
+
+		//---------------------> Operator Takes control<-----------------
 
 		if (rcIn_.channels[7] > BASERC){ // switch ON from transmitter
 		
@@ -969,14 +969,44 @@ void hexacopter::spin(){
 
 		}else{ // switch OFF from transmitter
 
-			if (lbstate_)// last state was ON
+			if (lbstate_){ 
+				// last state was ON
 				resetIntegralComponent_ = true;
+				// Set Seek and hunt state
+				Fstatus_ = SEEKING;
+			}
 
 			lbstate_ = BUTTON_OFF;
 
-// 			ROS_INFO("BUTTON_OFF - ROS control");
+ //			ROS_INFO("BUTTON_OFF - ROS control");
 
-			Fstatus_ = SEEK_AND_HUNT;
+		}
+		
+		//---------------------> Operator Takes control<-----------------
+
+		if (rcIn_.channels[7] > BASERC){ // switch ON from transmitter
+		
+			if (!lbstate_) // last state was OFF
+				reset_ORCIn();
+
+			lbstate_ = BUTTON_ON;
+
+// 			ROS_INFO("BUTTON_ON - RC control");
+
+			Fstatus_ = PILOT_CTRL;
+
+		}else{ // switch OFF from transmitter
+
+			if (lbstate_){ 
+				// last state was ON
+				resetIntegralComponent_ = true;
+				// Set Seek and hunt state
+				Fstatus_ = SEEKING;
+			}
+
+			lbstate_ = BUTTON_OFF;
+
+ //			ROS_INFO("BUTTON_OFF - ROS control");
 
 		}
 
@@ -999,13 +1029,13 @@ void hexacopter::spin(){
 
 							set_Mode(LOITER);
 
-							Fstatus_ = SEEK_AND_HUNT;
+							Fstatus_ = SEEKING;
 						}
 
 						// -------------------------------------------------------------------------------
 
 					}break;
-					case SEEK_AND_HUNT:{
+					case SEEKING:{
 
 						//------------------------> Seek and hunt <-------------------------
 
@@ -1068,13 +1098,13 @@ void hexacopter::spin(){
 
 							set_Mode(LOITER);
 
-							Fstatus_ = SEEK_AND_HUNT;
+							Fstatus_ = SEEKING;
 						}
 
 						// -------------------------------------------------------------------------------
 
 					}break;
-					case SEEK_AND_HUNT:{
+					case SEEKING:{
 
 						//------------------------> Seek and hunt <-------------------------
 
@@ -1177,7 +1207,7 @@ void hexacopter::spin(){
 						
 								// Reach Central Position
 
-								Fstatus_ = SEEK_AND_HUNT;
+								Fstatus_ = SEEKING;
 							}
 						}
 
