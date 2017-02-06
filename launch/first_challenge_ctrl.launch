@@ -8,6 +8,9 @@
 		<arg name="fcu_url" value="$(arg fcu_url)" />
 	</include>
 
+	<!-- UAV semaphore  node -->
+
+	<include file="$(find uav_semaphore)/launch/fsemaphore_launch.launch" />
 
 	<!-- Load recognition node -->
 

@@ -1,3 +1,4 @@
+
 #include "hexacopter.h"
 
 using namespace hxcpt;
@@ -596,14 +597,15 @@ void hexacopter::control_rule(){
 
 			case FIRST_CHALLENGE:{
 
-				if ( Fstatus_ == PILOT_CTRL || !(mode_ == LOITER && Fstatus_ == APPROACHING) ) // XXX alt_hold option
+				if ( (Fstatus_ == PILOT_CTRL  || mode_  != LOITER ) || ( Fstatus_ != APPROACHING && Fstatus_ != SEEKING && Fstatus_ != LANDING) ) 
 					continue;
 
 			}break;
 			default: {// THIRD_CHALLENGE:
 
-				if ( Fstatus_ == PILOT_CTRL || !(mode_ == LOITER && (Fstatus_ == APPROACHING || Fstatus_ == RELEASE_OBJ || Fstatus_ == LIFT_OBJ)) ) // XXX alt_hold option
+				if ( (Fstatus_ == PILOT_CTRL  || mode_  != LOITER ) || ( Fstatus_ != APPROACHING && Fstatus_ != SEEKING && Fstatus_ != RELEASE_OBJ && Fstatus_ != LIFT_OBJ) ) 
 					continue;
+
 			}			
 		}
 
@@ -624,7 +626,7 @@ void hexacopter::control_rule(){
 		// ----------------------------------------------------> Control <-------------------------------------------------------------
 
 		switch(Fstatus_){
-		
+			case LANDING:
 			case APPROACHING:{
 
 				err_x = (width_ / 2) - targetRef_.x; 
@@ -665,9 +667,17 @@ void hexacopter::control_rule(){
 					Pitch = BASERC - K_P * err_y + K_I * sum_err_y;
 					Yaw = BASERC;		// Yaw = BASERC - K_P * err_yaw  + K_I * sum_err_yaw;
 
-					if (refVariance_ > 100) {
+					if (refVariance_ > 100 && abs(err_x) < 100 && abs(err_y) < 100) {
 
-						Throttle = BASERC  - 150;
+						if (Fstatus_ == LANDING){
+						
+							Throttle -=  1;
+
+							if (Throttle < MINRC)
+								Throttle = MINRC;
+						}
+						else
+							Throttle = BASERC  - 200;
 				
 						/*
 						/// Controller altitude dependant
@@ -688,8 +698,10 @@ void hexacopter::control_rule(){
 					Yaw = BASERC; 
 					Throttle = BASERC;
 
-					if (( altitude_ < MAX_ALTITUDE ) && ( budgetResidual_ < -50 ))
-						Throttle += 80;
+					if (( altitude_ < MAX_ALTITUDE ) && ( budgetResidual_ < -50 )){
+						Yaw += 100;
+						Throttle += 150;
+					}
 				}  
 			}break;
 			case LIFT_OBJ:{
@@ -707,7 +719,15 @@ void hexacopter::control_rule(){
 				Yaw = BASERC; 
 				Throttle = BASERC - 100;				
 
-			}
+			}break;
+			default:{
+
+				Roll = BASERC;
+				Pitch = BASERC;
+				Yaw = BASERC; 
+				Throttle = BASERC;
+
+			}		
 		}
 
 		// std::cout << Roll << " " << Pitch << " " << Yaw << " " << Throttle << std::endl;
@@ -785,7 +805,7 @@ double hexacopter::C(const double x, double* z1, double* z2){
 	return y;
 }
 
-mavros_msgs::Waypoint hexacopter::generateWP( float latitude, float longitude, float alt, int command, int frame){
+mavros_msgs::Waypoint hexacopter::generateWP( float latitude, float longitude, float alt, float param1, float param2, float param3, float param4, int command, int frame){
 
 	mavros_msgs::Waypoint wp;
 
@@ -793,10 +813,10 @@ mavros_msgs::Waypoint hexacopter::generateWP( float latitude, float longitude, f
 	wp. command = command;
 	wp.is_current = false;
 	wp.autocontinue = false;
-	wp.param1 = 0;
-	wp.param2 = 0;
-	wp.param3 = 0;
-	wp.param4 = 0;
+	wp.param1 = param1;
+	wp.param2 = param2;
+	wp.param3 = param3;
+	wp.param4 = param4;
 	wp.x_lat = latitude;
 	wp.y_long = longitude;
 	wp.z_alt = alt;
@@ -810,18 +830,29 @@ void hexacopter::setWPMission(){
 
 	// Load WPs
 
-	sendWP(generateWP(-35.3654, 149.1456, 650));
+	std::vector<mavros_msgs::Waypoint> wpList;
+
+	// HOME
+	wpList.push_back(generateWP(43.612204, 10.586602, 0));
+
+	// Mission WayPoints
+	wpList.push_back(generateWP(43.612204, 10.586602, 25));
+	wpList.push_back(generateWP(43.611812, 10.585731, 25));
+
+	while(!sendWP(wpList));
 
 }
 
-bool hexacopter::sendWP(mavros_msgs::Waypoint wp){
+bool hexacopter::sendWP(std::vector<mavros_msgs::Waypoint> wps){
 
 
 	mavros_msgs::WaypointPush srv_wp;
 
 	// Load WPs
 
-	srv_wp.request.waypoints.push_back(wp);
+	// srv_wp.request.waypoints.push_back(wp);
+	
+	srv_wp.request.waypoints = wps;
 
 	// Send wp mission procedure
 
@@ -882,7 +913,7 @@ bool hexacopter::hold_on_DZ(bool hold_on){
 }
 
 void hexacopter::spin(){
-
+	
 	// Init functions
 	init();
 
@@ -923,26 +954,26 @@ void hexacopter::spin(){
 
 	//--------------------> PRE-Takeoff operation <--------------------
 
-	//  !!! ATTENTION MOTOR ARM !!!
+	// //  !!! ATTENTION MOTOR ARM !!!
 
-	// Set MODE
+	// // Set MODE
 
-	// set_Mode(STABILIZE);
+	set_Mode(GUIDED);
 
 	// if (verbose_ == true)
-	// 	ROS_INFO("Arming...");
+//		ROS_INFO("Arming...");
 	
-	// while (!set_arm(ARM) && ros::ok());
+	while (!set_arm(ARM) && ros::ok());
 
-	// takeoff(preset_h);
+	takeoff(preset_h);
 
 	// -------------------------------------------------------------------------------
 		
 	//------------------------> Seek and hunt <-------------------------
 
-	// setPMission();
+	setWPMission();
 
-	// set_mode(AUTO);
+	set_Mode(AUTO);
 	
 	// -------------------------------------------------------------------------------
 
@@ -958,13 +989,15 @@ void hexacopter::spin(){
 
 		if (rcIn_.channels[7] > BASERC){ // switch ON from transmitter
 		
-			if (!lbstate_) // last state was OFF
+			if (!lbstate_){ // last state was OFF
 				reset_ORCIn();
+				set_Mode(LOITER);
+			}
 
 			lbstate_ = BUTTON_ON;
 
 // 			ROS_INFO("BUTTON_ON - RC control");
-
+			
 			Fstatus_ = PILOT_CTRL;
 
 		}else{ // switch OFF from transmitter
@@ -972,6 +1005,7 @@ void hexacopter::spin(){
 			if (lbstate_){ 
 				// last state was ON
 				resetIntegralComponent_ = true;
+
 				// Set Seek and hunt state
 				Fstatus_ = SEEKING;
 			}
@@ -981,36 +1015,6 @@ void hexacopter::spin(){
  //			ROS_INFO("BUTTON_OFF - ROS control");
 
 		}
-		
-		//---------------------> Operator Takes control<-----------------
-
-		if (rcIn_.channels[7] > BASERC){ // switch ON from transmitter
-		
-			if (!lbstate_) // last state was OFF
-				reset_ORCIn();
-
-			lbstate_ = BUTTON_ON;
-
-// 			ROS_INFO("BUTTON_ON - RC control");
-
-			Fstatus_ = PILOT_CTRL;
-
-		}else{ // switch OFF from transmitter
-
-			if (lbstate_){ 
-				// last state was ON
-				resetIntegralComponent_ = true;
-				// Set Seek and hunt state
-				Fstatus_ = SEEKING;
-			}
-
-			lbstate_ = BUTTON_OFF;
-
- //			ROS_INFO("BUTTON_OFF - ROS control");
-
-		}
-
-		// -------------------------------------------------------------------------------
 
 		//---------------------> General Purpose Spin <--------------------
 
@@ -1021,6 +1025,9 @@ void hexacopter::spin(){
 				switch(Fstatus_){
 
 					case TAKEOFF:{
+
+						ROS_INFO("TAKEOFF");
+
 						//------------------------> Takeoff operation <-------------------------
 
 						if  (altitude_  > (preset_h - 0.5) ){
@@ -1037,18 +1044,22 @@ void hexacopter::spin(){
 					}break;
 					case SEEKING:{
 
+						ROS_INFO("SEEKING");
+
 						//------------------------> Seek and hunt <-------------------------
+
+						//set_Mode(AUTO);
 
 						if (budgetResidual_ > 0){
 							
-							set_Mode(LOITER);
+							set_Mode(LOITER);      
 
 							Fstatus_ = APPROACHING;
 						}
 
-						// else 
-						// 	if (budgetResidual_ < -300 && mode_ == LOITER)
-						// 		set_mode(AUTO);				
+						 else 
+						 	if (budgetResidual_ < -150 && mode_ == LOITER)
+						 		set_Mode(AUTO);				
 
 						// -------------------------------------------------------------------------------
 
@@ -1056,26 +1067,37 @@ void hexacopter::spin(){
 					}break;
 					case APPROACHING:{
 
-					// ------------------------->Approaching<------------------------------
-					
-					if (altitude_ < 0.5)
-						Fstatus_ = LANDING;						
+						ROS_INFO("APPROACHING");
 
-					// -------------------------------------------------------------------------------
+						// ------------------------->Approaching<------------------------------
+						
+						if (altitude_ < 0.5)
+							Fstatus_ = LANDING;						
+
+						// -------------------------------------------------------------------------------
 
 					}break;
 
 					case LANDING:{
 
+
+						ROS_INFO("LANDING");
+
 						// -------------------------> Landing <-----------------------------------
 
-							if (altitude_ < 0.6)
-								break;
+						if (rcIn_.channels[2] < (MINRC + 100))
+							Fstatus_ = ENDING;
 
 						// -------------------------------------------------------------------------------
 
-					}
+					}break;
+					case ENDING:{
+						ROS_INFO("ENDING");
+						break;
+					}break;
 					default:{ // PILOT_CTRL
+
+						ROS_INFO("PILOT_CTRL");
 
 						// -------------------------> Pilot Ctrl <-----------------------------------
 						// Autonomous Control do nothing
@@ -1096,9 +1118,9 @@ void hexacopter::spin(){
 
 							// When the defined altitude is reached, set Mode to LOITER
 
-							set_Mode(LOITER);
+							set_Mode(AUTO);
 
-							Fstatus_ = SEEKING;
+							Fstatus_ = TAKEOFF;
 						}
 
 						// -------------------------------------------------------------------------------
@@ -1226,9 +1248,9 @@ void hexacopter::spin(){
 
 	// -------------------------> Landing <-----------------------------------
 
-	land();
+//	land();
 
-	while(altitude_ > 0.1);
+//	while(altitude_ > 0.1);
 
 	// !!! ATTENTION MOTOR DISARM !!!
 	if (verbose_ == true)

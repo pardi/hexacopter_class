@@ -61,8 +61,8 @@
 #define a3 0.330016583747927
 
 
-#define K_P  5//((altitude_> 12)?0.9:(altitude_> 3)?0.4:(altitude_> 2)?0.32:(altitude_> 1.2)?0.2:0.15)
-#define K_I  0.15
+#define K_P  0.5//((altitude_> 12)?0.9:(altitude_> 3)?0.4:(altitude_> 2)?0.32:(altitude_> 1.2)?0.2:0.15)
+#define K_I  0.1
 #define sgn(x) ((x>0)?1:-1)
 
 namespace hxcpt {
@@ -94,7 +94,8 @@ namespace hxcpt {
 						RELEASE_OBJ,
 						LANDING,
 						TAKEOFF,
-						PILOT_CTRL				
+						PILOT_CTRL,
+						ENDING
 					};
 
 
@@ -140,9 +141,9 @@ namespace hxcpt {
 		bool setSYSID_MYGCS();
 
 		double C(const double, double*, double*);
-		mavros_msgs::Waypoint generateWP(float, float, float, int command = 16, int frame = 0);
+		mavros_msgs::Waypoint generateWP(float, float, float, float param1 = 10.0,  float param2 = 2.0, float param3 = 0.0, float param4 = 0.0,  int command = 16, int frame = 4);
 		void setWPMission();
-		bool sendWP(mavros_msgs::Waypoint);
+		bool sendWP(std::vector<mavros_msgs::Waypoint>);
 		double distWPs(mavros_msgs::Waypoint, mavros_msgs::Waypoint);
 		bool check_grasp();
 		bool hold_on_DZ(bool);
