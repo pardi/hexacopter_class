@@ -833,9 +833,10 @@ void hexacopter::setWPMission(){
 	std::vector<mavros_msgs::Waypoint> wpList;
 
 	// HOME
-	wpList.push_back(generateWP(43.612204, 10.586602, 0));
+	wpList.push_back(generateWP(43.612204, 10.586602, 0, 0));
 
 	// Mission WayPoints
+	wpList.push_back(generateWP(0, 0, 0, 0, 2, 0,0, 178, 0));
 	wpList.push_back(generateWP(43.612204, 10.586602, 25));
 	wpList.push_back(generateWP(43.611812, 10.585731, 25));
 
@@ -1056,7 +1057,6 @@ void hexacopter::spin(){
 
 							Fstatus_ = APPROACHING;
 						}
-
 						 else 
 						 	if (budgetResidual_ < -150 && mode_ == LOITER)
 						 		set_Mode(AUTO);				
@@ -1095,7 +1095,7 @@ void hexacopter::spin(){
 						ROS_INFO("ENDING");
 						break;
 					}break;
-					default:{ // PILOT_CTRL
+					default:{ // PILOT_CTRLz
 
 						ROS_INFO("PILOT_CTRL");
 

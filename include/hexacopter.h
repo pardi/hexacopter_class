@@ -141,7 +141,7 @@ namespace hxcpt {
 		bool setSYSID_MYGCS();
 
 		double C(const double, double*, double*);
-		mavros_msgs::Waypoint generateWP(float, float, float, float param1 = 10.0,  float param2 = 2.0, float param3 = 0.0, float param4 = 0.0,  int command = 16, int frame = 4);
+		mavros_msgs::Waypoint generateWP(float, float, float, float param1 = 10.0,  float param2 = 2.0, float param3 = 0.0, float param4 = 0.0,  int command = 16, int frame = 3);
 		void setWPMission();
 		bool sendWP(std::vector<mavros_msgs::Waypoint>);
 		double distWPs(mavros_msgs::Waypoint, mavros_msgs::Waypoint);
