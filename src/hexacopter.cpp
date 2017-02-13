@@ -56,23 +56,27 @@ hexacopter::hexacopter(ros::NodeHandle* n, bool verbose){
 	// Assign node pointer
 	n_ = n;
 
+	// Get namespace
+	
+	std::string ns = ros::this_node::getNamespace();
+
 	// set param
 	verbose_ = verbose;
 
 	// Subscriber to flight mode
 
-	mavros_state_sub_ = n_->subscribe("/mavros/state", 1, &hexacopter::stateCallback, this); 
-	mavros_gpsFIX_sub_ = n_->subscribe("/mavros/global_position/raw/fix", 1, &hexacopter::gpsFIXCallback, this);
-	mavros_battery_sub_ = n_->subscribe("/mavros/battery", 1, &hexacopter::batteryCallback, this);
-	mavros_rcIn_sub_ = n_->subscribe("/mavros/rc/in", 1, &hexacopter::rcINCallback, this);
+	mavros_state_sub_ = n_->subscribe(ns + "/mavros/state", 1, &hexacopter::stateCallback, this); 
+	mavros_gpsFIX_sub_ = n_->subscribe(ns + "/mavros/global_position/raw/fix", 1, &hexacopter::gpsFIXCallback, this);
+	mavros_battery_sub_ = n_->subscribe(ns + "/mavros/battery", 1, &hexacopter::batteryCallback, this);
+	mavros_rcIn_sub_ = n_->subscribe(ns + "/mavros/rc/in", 1, &hexacopter::rcINCallback, this);
 	// Target info by camera recognition
 
-	target_pos_sub_ = n->subscribe("/mark_follower/target_pose", 100, &hexacopter::markposeCallback, this);
+	target_pos_sub_ = n->subscribe(ns + "/mark_follower/target_pose", 100, &hexacopter::markposeCallback, this);
 
 	// Publisher
 	
 	mavros_overrideIN_pub_ = n_->advertise<mavros_msgs::OverrideRCIn>("/mavros/rc/override", 10);
-    	altitude_sub_ = n_->subscribe("/mavros/global_position/rel_alt", 1, &hexacopter::altitudeCallback, this);
+    	altitude_sub_ = n_->subscribe(ns + "/mavros/global_position/rel_alt", 1, &hexacopter::altitudeCallback, this);
 
 	// Service to get params
 
@@ -92,7 +96,7 @@ hexacopter::hexacopter(ros::NodeHandle* n, bool verbose){
 
 	// Get info about the challenge
 
-	n_->param("/mark_follower/challenge", challenge_, false);
+	n_->param(ns + "/mark_follower/challenge", challenge_, false);
 
 	// Init variables
 	
