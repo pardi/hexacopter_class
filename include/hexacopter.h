@@ -53,6 +53,16 @@
 #define MAX_ALTITUDE 20
 #define UAV_ID 1
 
+#define DZ_IN_LAT 43.612204
+#define DZ_IN_LONG 10.586602
+
+#define DZ_OUT_LAT 43.612083
+#define DZ_OUT_LONG 10.586595
+
+#define HOME_LAT 43.612204
+#define HOME_LONG 10.586602
+
+
 // Filter parameters
 #define b1 663416.2537313433
 #define b2 -1326699,83084577
@@ -63,6 +73,7 @@
 
 #define K_P  0.5//((altitude_> 12)?0.9:(altitude_> 3)?0.4:(altitude_> 2)?0.32:(altitude_> 1.2)?0.2:0.15)
 #define K_I  0.1
+#define KP_TAU 0.1
 #define sgn(x) ((x>0)?1:-1)
 
 namespace hxcpt {
@@ -90,7 +101,7 @@ namespace hxcpt {
 						GRASPING,
 						LIFT_OBJ,
 						DRAG_TO_DZ,
-						LOCATE_DROP_BOX,
+						LOC_DROP_BOX,
 						RELEASE_OBJ,
 						LANDING,
 						TAKEOFF,
@@ -134,6 +145,7 @@ namespace hxcpt {
 		void markposeCallback(const mark_follower::markPoseStampedPtr&);
 		void altitudeCallback(const std_msgs::Float64Ptr&);
 		void rcINCallback(const mavros_msgs::RCIn::ConstPtr&);
+		void wpCallback(const sensor_msgs::NavSatFix::ConstPtr&);
 
 		bool preArm_check();
 		void init();
@@ -147,7 +159,7 @@ namespace hxcpt {
 		double distWPs(mavros_msgs::Waypoint, mavros_msgs::Waypoint);
 		bool check_grasp();
 		bool hold_on_DZ(bool);
-
+		float ctrl_tau();
 
 		bool str2Guide_Mode(const std::string, uint8_t&);
 		bool Guide_Mode2str(const uint8_t, std::string&);
@@ -178,7 +190,8 @@ namespace hxcpt {
 		int budgetResidual_;
 		float refVariance_;
 		ros::Time targetStamp_;
-
+		float tau_;
+		
 		// Camera params
 		int width_, height_;
 		
@@ -186,10 +199,14 @@ namespace hxcpt {
 		mavros_msgs::RCIn rcIn_;
 		bool rcStart_;
 
+		// current WP
+		mavros_msgs::Waypoint currentWP_;
+
 		// Challenge information
 		bool challenge_;
 		FState Fstatus_;
-
+		bool throttle_down_;
+		
 		// ROS
 		
 		ros::NodeHandle* n_;
@@ -198,6 +215,7 @@ namespace hxcpt {
 		ros::Subscriber mavros_gpsFIX_sub_;
 		ros::Subscriber mavros_battery_sub_;
 		ros::Subscriber mavros_rcIn_sub_;
+		ros::Subscriber mavros_wp_sub_;
 		ros::Subscriber target_pos_sub_;
 		ros::Subscriber altitude_sub_;
 

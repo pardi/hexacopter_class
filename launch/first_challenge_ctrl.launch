@@ -1,23 +1,27 @@
 <launch>
 
-       <!-- Load PX4 node-->
-
-	<arg name="fcu_url" default="/dev/ttyUSB0:921600" />
-
-	<include file="$(find mavros)/launch/px4.launch">
-		<arg name="fcu_url" value="$(arg fcu_url)" />
-	</include>
-
 	<!-- UAV semaphore  node -->
 
 	<include file="$(find uav_semaphore)/launch/fsemaphore_launch.launch" />
 
-	<!-- Load recognition node -->
+	<group ns="uav0">
 
-	<include file="$(find mark_follower)/launch/first_challenge_recognition.launch" />
+       <!-- Load PX4 node-->
 
-	<!-- Load UAV control node -->
+		<arg name="fcu_url" default="/dev/ttyUSB0:921600" />
 
-	<node name="hexacopter_class" pkg="hexacopter_class" type="hexacopter_class" respawn="true" output="screen" />
+		<include file="$(find mavros)/launch/px4.launch">
+			<arg name="fcu_url" value="$(arg fcu_url)" />
+		</include>
+
+		<!-- Load recognition node -->
+
+		<include file="$(find mark_follower)/launch/first_challenge_recognition.launch" />
+
+		<!-- Load UAV control node -->
+
+		<node name="hexacopter_class" pkg="hexacopter_class" type="hexacopter_class" respawn="true" output="screen" />
     
-</launch>
+    	</group>
+    	
+    </launch>

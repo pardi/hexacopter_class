@@ -57,7 +57,6 @@ hexacopter::hexacopter(ros::NodeHandle* n, bool verbose){
 	n_ = n;
 
 	// Get namespace
-	
 	std::string ns = ros::this_node::getNamespace();
 
 	// set param
@@ -69,6 +68,8 @@ hexacopter::hexacopter(ros::NodeHandle* n, bool verbose){
 	mavros_gpsFIX_sub_ = n_->subscribe(ns + "/mavros/global_position/raw/fix", 1, &hexacopter::gpsFIXCallback, this);
 	mavros_battery_sub_ = n_->subscribe(ns + "/mavros/battery", 1, &hexacopter::batteryCallback, this);
 	mavros_rcIn_sub_ = n_->subscribe(ns + "/mavros/rc/in", 1, &hexacopter::rcINCallback, this);
+	mavros_wp_sub_ = n_->subscribe(ns + "/mavros/", 1, &hexacopter::wpCallback, this);
+
 	// Target info by camera recognition
 
 	target_pos_sub_ = n->subscribe(ns + "/mark_follower/target_pose", 100, &hexacopter::markposeCallback, this);
@@ -107,6 +108,7 @@ hexacopter::hexacopter(ros::NodeHandle* n, bool verbose){
 	
 	// set OFF 
 	lbstate_ = BUTTON_OFF;
+	throttle_down_ = false;
 
 	targetRef_.x = 0;
 	budgetResidual_ = 0;
@@ -433,6 +435,7 @@ void hexacopter::markposeCallback(const mark_follower::markPoseStampedPtr& msg){
 	targetRef_.y = msg->y;
 	budgetResidual_ = msg->budgetResidual;
 	refVariance_ = msg->variance;
+	tau_ = msg->tau;
 
 
 }
@@ -448,10 +451,18 @@ void hexacopter::rcINCallback(const mavros_msgs::RCIn::ConstPtr& msg){
 }
 
 
-void hexacopter::altitudeCallback(const std_msgs::Float64Ptr &msg)
+void hexacopter::altitudeCallback(const std_msgs::Float64Ptr& msg)
 {
 	altitude_ = msg->data;
 }
+
+void hexacopter::wpCallback(const sensor_msgs::NavSatFix::ConstPtr& msg )
+{
+
+	currentWP_ = generateWP(msg->latitude, msg->longitude, msg->altitude);
+
+}
+
 
 bool hexacopter::str2Guide_Mode(const std::string str, uint8_t& mode){
 
@@ -607,7 +618,7 @@ void hexacopter::control_rule(){
 			}break;
 			default: {// THIRD_CHALLENGE:
 
-				if ( (Fstatus_ == PILOT_CTRL  || mode_  != LOITER ) || ( Fstatus_ != APPROACHING && Fstatus_ != SEEKING && Fstatus_ != RELEASE_OBJ && Fstatus_ != LIFT_OBJ) ) 
+				if ( (Fstatus_ == PILOT_CTRL  || mode_  != LOITER ) || ( Fstatus_ != APPROACHING && Fstatus_ != SEEKING && Fstatus_ != GRASPING && Fstatus_ != DRAG_TO_DZ && Fstatus_ != RELEASE_OBJ && Fstatus_ != LIFT_OBJ) ) 
 					continue;
 
 			}			
@@ -675,7 +686,15 @@ void hexacopter::control_rule(){
 
 						if (Fstatus_ == LANDING){
 						
+							// Tau-Theory control
+							
+							// Throttle += ctrl_tau();
+
 							Throttle -=  1;
+
+							// Throttle near the bottom of the stick
+							if (Throttle < MINRC + 100)
+								throttle_down_ = true;
 
 							if (Throttle < MINRC)
 								Throttle = MINRC;
@@ -708,12 +727,20 @@ void hexacopter::control_rule(){
 					}
 				}  
 			}break;
+			case GRASPING:{
+
+				Roll = BASERC;
+				Pitch = BASERC;
+				Yaw = BASERC; 
+				Throttle = BASERC - 100;
+
+			}break;
 			case LIFT_OBJ:{
 
 				Roll = BASERC;
 				Pitch = BASERC;
 				Yaw = BASERC; 
-				Throttle = BASERC + 100;
+				Throttle = BASERC + 150;
 
 			}break;
 			case RELEASE_OBJ:{
@@ -837,12 +864,12 @@ void hexacopter::setWPMission(){
 	std::vector<mavros_msgs::Waypoint> wpList;
 
 	// HOME
-	wpList.push_back(generateWP(43.612204, 10.586602, 0, 0));
+	wpList.push_back(generateWP(HOME_LAT, HOME_LONG, 0, 0));
 
 	// Mission WayPoints
 	wpList.push_back(generateWP(0, 0, 0, 0, 2, 0,0, 178, 0));
-	wpList.push_back(generateWP(43.612204, 10.586602, 25));
-	wpList.push_back(generateWP(43.611812, 10.585731, 25));
+	wpList.push_back(generateWP(43.612204, 10.586602, altitude_));
+	wpList.push_back(generateWP(43.611812, 10.585731, altitude_));
 
 	while(!sendWP(wpList));
 
@@ -893,6 +920,16 @@ double hexacopter::distWPs(mavros_msgs::Waypoint wp1, mavros_msgs::Waypoint wp2)
 
 	return   2 * EARTH_RADIUS_KM * atan2(sqrt(a), sqrt(1 - a));
 
+}
+
+float hexacopter::ctrl_tau(){
+
+	if (tau_ < 0)	
+		return -1;
+
+	float tauRef = 3; // [s]
+	
+	return KP_TAU * (tauRef - tau_);
 }
 
 bool hexacopter::check_grasp(){
@@ -956,17 +993,16 @@ void hexacopter::spin(){
 
 	reset_ORCIn();
 
-
 	//--------------------> PRE-Takeoff operation <--------------------
 
-	// //  !!! ATTENTION MOTOR ARM !!!
+	//  !!! ATTENTION MOTOR ARM !!!
 
-	// // Set MODE
+	// Set MODE
 
 	set_Mode(GUIDED);
 
 	// if (verbose_ == true)
-//		ROS_INFO("Arming...");
+	//	ROS_INFO("Arming...");
 	
 	while (!set_arm(ARM) && ros::ok());
 
@@ -976,11 +1012,19 @@ void hexacopter::spin(){
 		
 	//------------------------> Seek and hunt <-------------------------
 
+	std::vector<mavros_msgs::Waypoint> wpList;
+
 	setWPMission();
 
 	set_Mode(AUTO);
 	
 	// -------------------------------------------------------------------------------
+
+	// Flag DZ ch3
+
+	bool wpOutDZ, wpInDZ, waitWP;
+
+	// -----------------
 
 
 	while(ros::ok()){
@@ -1089,7 +1133,7 @@ void hexacopter::spin(){
 
 						// -------------------------> Landing <-----------------------------------
 
-						if (rcIn_.channels[2] < (MINRC + 100))
+						if (throttle_down_)
 							Fstatus_ = ENDING;
 
 						// -------------------------------------------------------------------------------
@@ -1099,7 +1143,7 @@ void hexacopter::spin(){
 						ROS_INFO("ENDING");
 						break;
 					}break;
-					default:{ // PILOT_CTRLz
+					default:{ // PILOT_CTRL
 
 						ROS_INFO("PILOT_CTRL");
 
@@ -1116,15 +1160,23 @@ void hexacopter::spin(){
 				switch(Fstatus_){
 
 					case TAKEOFF:{
+
+						ROS_INFO("TAKEOFF");
+
 						//------------------------> Takeoff operation <-------------------------
 
 						if  (altitude_  > (preset_h - 0.5) ){
 
 							// When the defined altitude is reached, set Mode to LOITER
 
-							set_Mode(AUTO);
+							if (hold_on_DZ(false)){
+						
+								set_Mode(LOITER);
 
-							Fstatus_ = TAKEOFF;
+								// Reach Central Position
+
+								Fstatus_ = SEEKING;
+							}
 						}
 
 						// -------------------------------------------------------------------------------
@@ -1132,24 +1184,29 @@ void hexacopter::spin(){
 					}break;
 					case SEEKING:{
 
+						ROS_INFO("SEEKING");
+
 						//------------------------> Seek and hunt <-------------------------
+
+						//set_Mode(AUTO);
 
 						if (budgetResidual_ > 0){
 							
-							set_Mode(LOITER);
+							set_Mode(LOITER);      
 
 							Fstatus_ = APPROACHING;
 						}
-
-						// else 
-						// 	if (budgetResidual_ < -300 && mode_ == LOITER)
-						// 		set_mode(AUTO);				
+						 else 
+						 	if (budgetResidual_ < -150 && mode_ == LOITER)
+						 		set_Mode(AUTO);				
 
 						// -------------------------------------------------------------------------------
 
 
 					}break;
 					case APPROACHING:{
+
+						ROS_INFO("APPROACHING");
 
 						// ------------------------->Approaching<------------------------------
 						
@@ -1159,61 +1216,128 @@ void hexacopter::spin(){
 						// -------------------------------------------------------------------------------
 
 					}break;
+
 					case GRASPING:{
+
+						ROS_INFO("GRASPING");
 
 						// ---------------------------->Grasping<--------------------------------
 
-						// Call Fcn to activate grasp
-
-						// Check Grasping
-						if (check_grasp())
+						if (rcIn_.channels[8] > BASERC)
 							Fstatus_ = LIFT_OBJ;
-						else
-							Fstatus_ = APPROACHING;
+						
+
+
+						// // Call Fcn to activate grasp
+
+						// // Check Grasping
+						// if (check_grasp())
+						// 	Fstatus_ = LIFT_OBJ;
+						// else
+						// 	Fstatus_ = APPROACHING;
 							
 						// -------------------------------------------------------------------------------
 
 					}break;
 					case LIFT_OBJ:{
 
+						ROS_INFO("LIFT_OBJ");
+
 						// --------------------------->Lift Object<--------------------------------
 						
-						if (altitude_ > preset_h - .5)
+						if (altitude_ > preset_h - .5){
+
+							wpOutDZ = true;
+
 							Fstatus_ = DRAG_TO_DZ;			
+						}
 
 						// -------------------------------------------------------------------------------
 
 					}break;
 					case DRAG_TO_DZ:{
 
-						// --------------------->Drag object to DZ<--------------------------
-						
-						//	Set WP
-						// 	GO to WP
+						ROS_INFO("DRAG_TO_DZ");
 
-						if (hold_on_DZ(true))
-							Fstatus_ = LOCATE_DROP_BOX;
+						if (wpOutDZ){
 
-						//	Set WP
-						// 	GO to WP
+							// --------------------->Drag object to DZ<--------------------------					
+							wpList.clear();
+
+							// HOME
+							wpList.push_back(generateWP(HOME_LAT, HOME_LONG, 0, 0));
+
+							// Mission WayPoints
+							wpList.push_back(generateWP(0, 0, 0, 0, 2, 0,0, 178, 0));
+							wpList.push_back(generateWP(DZ_OUT_LAT, DZ_OUT_LONG, altitude_));
+
+							while(!sendWP(wpList));
+
+							set_Mode(AUTO);
+
+							wpOutDZ = false;
+							waitWP = true;
+						}
+						else {
+							
+							if (waitWP){
+								waitWP = (distWPs(generateWP(DZ_OUT_LAT, DZ_OUT_LONG, altitude_), currentWP_) > 0.003); // >3 [m] 
+								wpInDZ = true;
+
+								set_Mode(LOITER);
+
+							}
+							else{
+
+								if (wpInDZ && hold_on_DZ(true)){
+
+									// Enter in DZ
+									wpList.clear();
+
+									// HOME
+									wpList.push_back(generateWP(HOME_LAT, HOME_LONG, 0, 0));
+
+									// Mission WayPoints
+									wpList.push_back(generateWP(0, 0, 0, 0, 2, 0,0, 178, 0));
+									wpList.push_back(generateWP(DZ_IN_LAT, DZ_IN_LONG, altitude_));
+
+									while(!sendWP(wpList));
+
+									set_Mode(AUTO);
+
+									wpInDZ = false;
+								}
+								else{
+									if ((distWPs(generateWP(DZ_OUT_LAT, DZ_OUT_LONG, altitude_), currentWP_) < 0.003)){
+										
+										set_Mode(LOITER);
+
+										Fstatus_ = LOC_DROP_BOX;
+									}
+								}
+							}
+						}
 
 						// -------------------------------------------------------------------------------
 
-
 					}break;
-					case LOCATE_DROP_BOX:{
+					case LOC_DROP_BOX:{
+
+						ROS_INFO("LOC_DROP_BOX");
 
 						// ---------------------->Locate drop box<---------------------------
 						
 						// Request the location of the DB to mark_follower
 						// 
 
-						Fstatus_ == RELEASE_OBJ;
+						Fstatus_ = RELEASE_OBJ;
 
 						// -------------------------------------------------------------------------------
 
 					}break;
 					case PILOT_CTRL:{
+
+						ROS_INFO("PILOT_CTRL");
 
 						// -------------------------> Pilot Ctrl <-----------------------------------
 						// Autonomous Control do nothing
@@ -1222,20 +1346,16 @@ void hexacopter::spin(){
 					}break;
 					default:{ //RELEASE_OBJ
 
+						ROS_INFO("RELEASE_OBJ");
+
 						// ------------------------>Release object<----------------------------
 						
 
-						if (altitude_ < 0.5){
+						if (altitude_ < 0.5)
 
 							// Release Grasp
 
-							if (hold_on_DZ(false)){
-						
-								// Reach Central Position
-
-								Fstatus_ = SEEKING;
-							}
-						}
+							Fstatus_ = TAKEOFF;						
 
 						// -------------------------------------------------------------------------------
 
