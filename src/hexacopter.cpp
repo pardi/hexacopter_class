@@ -15,13 +15,13 @@ hexacopter::hexacopter(int argc, char** argv, bool verbose){
 
 	// Subscriber to flight mode
 
-	mavros_state_sub_ = n_->subscribe("/mavros/state", 1, &hexacopter::stateCallback, this);
-	mavros_gpsFIX_sub_ = n_->subscribe("/mavros/global_position/raw/fix", 1, &hexacopter::gpsFIXCallback, this);
-	mavros_battery_sub_ = n_->subscribe("/mavros/battery", 1, &hexacopter::batteryCallback, this);
+	mavros_state_sub_ = n_->subscribe(ns_ + "/mavros/state", 1, &hexacopter::stateCallback, this);
+	mavros_gpsFIX_sub_ = n_->subscribe(ns_ + "/mavros/global_position/raw/fix", 1, &hexacopter::gpsFIXCallback, this);
+	mavros_battery_sub_ = n_->subscribe(ns_ + "/mavros/battery", 1, &hexacopter::batteryCallback, this);
 
 	// Publisher
 
-	mavros_overrideIN_pub_ = n_->advertise<mavros_msgs::OverrideRCIn>("/mavros/rc/override", 10);
+	mavros_overrideIN_pub_ = n_->advertise<mavros_msgs::OverrideRCIn>(ns_ + "/mavros/rc/override", 10);
 
 	// Init variables
 	
@@ -40,7 +40,7 @@ hexacopter::hexacopter(int argc, char** argv, bool verbose){
 
 	// Get info about the challenge
 
-	n_->param("/mark_follower/challenge", challenge_, false);
+	n_->param(ns_ + "/mark_follower/challenge", challenge_, false);
 
 
 	// Thread
@@ -53,35 +53,39 @@ hexacopter::hexacopter(int argc, char** argv, bool verbose){
 
 hexacopter::hexacopter(ros::NodeHandle* n, bool verbose){
 
+	float p = 43.123456789;
+
+	std::cout << p << std::endl;
+
 	// Assign node pointer
 	n_ = n;
 
 	// Get namespace
-	std::string ns = ros::this_node::getNamespace();
+	std::string ns_ = ros::this_node::getNamespace();
 
 	// set param
 	verbose_ = verbose;
 
 	// Subscriber to flight mode
 
-	mavros_state_sub_ = n_->subscribe(ns + "/mavros/state", 1, &hexacopter::stateCallback, this); 
-	mavros_gpsFIX_sub_ = n_->subscribe(ns + "/mavros/global_position/raw/fix", 1, &hexacopter::gpsFIXCallback, this);
-	mavros_battery_sub_ = n_->subscribe(ns + "/mavros/battery", 1, &hexacopter::batteryCallback, this);
-	mavros_rcIn_sub_ = n_->subscribe(ns + "/mavros/rc/in", 1, &hexacopter::rcINCallback, this);
-	mavros_wp_sub_ = n_->subscribe(ns + "/mavros/", 1, &hexacopter::wpCallback, this);
+	mavros_state_sub_ = n_->subscribe(ns_ + "/mavros/state", 1, &hexacopter::stateCallback, this); 
+	mavros_gpsFIX_sub_ = n_->subscribe(ns_ + "/mavros/global_position/raw/fix", 1, &hexacopter::gpsFIXCallback, this);
+	mavros_battery_sub_ = n_->subscribe(ns_ + "/mavros/battery", 1, &hexacopter::batteryCallback, this);
+	mavros_rcIn_sub_ = n_->subscribe(ns_ + "/mavros/rc/in", 1, &hexacopter::rcINCallback, this);
+	mavros_wp_sub_ = n_->subscribe(ns_ + "/mavros/", 1, &hexacopter::wpCallback, this);
 
 	// Target info by camera recognition
 
-	target_pos_sub_ = n->subscribe(ns + "/mark_follower/target_pose", 100, &hexacopter::markposeCallback, this);
+	target_pos_sub_ = n->subscribe(ns_ + "/mark_follower/target_pose", 100, &hexacopter::markposeCallback, this);
 
 	// Publisher
 	
 	mavros_overrideIN_pub_ = n_->advertise<mavros_msgs::OverrideRCIn>("/mavros/rc/override", 10);
-    	altitude_sub_ = n_->subscribe(ns + "/mavros/global_position/rel_alt", 1, &hexacopter::altitudeCallback, this);
+    	altitude_sub_ = n_->subscribe(ns_ + "/mavros/global_position/rel_alt", 1, &hexacopter::altitudeCallback, this);
 
 	// Service to get params
 
-	ros::ServiceClient client = n_->serviceClient<ids_viewer::IDSparams>("ids_viewer/params");
+	ros::ServiceClient client = n_->serviceClient<ids_viewer::IDSparams>(ns_ + "/ids_viewer/params");
 
 	ids_viewer::IDSparams srv;
 
@@ -97,7 +101,7 @@ hexacopter::hexacopter(ros::NodeHandle* n, bool verbose){
 
 	// Get info about the challenge
 
-	n_->param(ns + "/mark_follower/challenge", challenge_, false);
+	n_->param(ns_ + "/mark_follower/challenge", challenge_, false);
 
 	// Init variables
 	
@@ -137,7 +141,7 @@ bool hexacopter::set_arm(bool arm){
 
 	// Arm Hexacpt
 
-	ros::ServiceClient arming_cl = n_->serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
+	ros::ServiceClient arming_cl = n_->serviceClient<mavros_msgs::CommandBool>(ns_ + "/mavros/cmd/arming");
 
 	mavros_msgs::CommandBool srv_setMode;
 
@@ -164,7 +168,7 @@ bool hexacopter::set_arm(bool arm){
 bool hexacopter::set_Mode(uint8_t mode){
 	// Set Guide mode
 
-	ros::ServiceClient cl = n_->serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
+	ros::ServiceClient cl = n_->serviceClient<mavros_msgs::SetMode>(ns_ + "/mavros/set_mode");
 	
 	mavros_msgs::SetMode srv_setMode;
 	
@@ -248,7 +252,7 @@ bool hexacopter::takeoff(const float alt){
 
 	// Start taking off procedure
 
-	ros::ServiceClient takeoff_cl = n_->serviceClient<mavros_msgs::CommandTOL>("/mavros/cmd/takeoff");
+	ros::ServiceClient takeoff_cl = n_->serviceClient<mavros_msgs::CommandTOL>(ns_ + "/mavros/cmd/takeoff");
 
 	mavros_msgs::CommandTOL srv_takeoff;
 
@@ -275,9 +279,10 @@ bool hexacopter::takeoff(const float alt){
 
 bool hexacopter::land(){
 		
+
 	// Start Landing procedure
 
-	ros::ServiceClient land_cl = n_->serviceClient<mavros_msgs::CommandTOL>("/mavros/cmd/land");
+	ros::ServiceClient land_cl = n_->serviceClient<mavros_msgs::CommandTOL>(ns_ + "/mavros/cmd/land");
 
 	mavros_msgs::CommandTOL srv_land;
 
@@ -347,6 +352,8 @@ bool hexacopter::set_ORCIn(int ch1, int ch2, int ch3, int ch4, int ch5, int ch6,
 	chs.push_back(ch6);
 	chs.push_back(ch7);	
 	chs.push_back(ch8);
+
+	// std::cout << ch1 << " " << ch2 << " " << ch3 << " " << ch4 << std::endl;
 
 	return send_RCmsg(chs);
 
@@ -595,12 +602,16 @@ void hexacopter::control_rule(){
 
 	double err_x, err_y, err_yaw;
 	double sum_err_x = 0, sum_err_y = 0, sum_err_yaw = 0;
+	double err_x_old = 0, err_y_old = 0, err_yaw_old = 0;
+
+	double Dx_sum = 0, Dy_sum = 0, Dx_old = 0, Dy_old = 0; 
 
 	double x1[3] = {0, 0, 0}, x2[3] = {0, 0, 0};
 
 	double dt = 0.067;
 
 	resetIntegralComponent_ = false;
+
 
 	while(ros::ok()){
 
@@ -641,48 +652,88 @@ void hexacopter::control_rule(){
 		// ----------------------------------------------------> Control <-------------------------------------------------------------
 
 		switch(Fstatus_){
+			case GRASPING:
 			case LANDING:
 			case APPROACHING:{
 
-				err_x = (width_ / 2) - targetRef_.x; 
-				err_y = (height_/  2) - targetRef_.y;  
-	//	 		err_yaw = yaw_ - targetRef_.yaw;
 
-				sum_err_x += err_x * dt;
-				sum_err_y += err_y * dt;	
-	//	 		sum_err_yaw += err_yaw * dt;
-
-				
-				// Anti wind-UP
-
-				if (sum_err_x > 100)
-					sum_err_x = 100;
-				
-				if (sum_err_y > 100)
-					sum_err_y = 100;
-
-				if (sum_err_yaw > 100)
-					sum_err_yaw = 100;
-
-				if (sum_err_x < -100)
-					sum_err_x = -100;
-				
-				if (sum_err_y < -100)
-					sum_err_y = -100;
-
-				if (sum_err_yaw < -100)
-					sum_err_yaw = -100;
-
-
-
-				// Calculate Roll and Pitch
 				if (budgetResidual_ > 0){
+
+					err_x = (width_ / 2) - targetRef_.x; 
+					err_y = (height_/  2) - targetRef_.y;  
+		//	 		err_yaw = yaw_ - targetRef_.yaw;
+
+					//  Proportional
+
+					double Px = K_P * err_x;
+					double Py = K_P * err_y;
+
+					// Integral
+
+					sum_err_x += (err_x - err_x_old) * dt;
+					sum_err_y += (err_y - err_y_old) * dt;	
+		//	 		sum_err_yaw += (err_yaw - err_yaw_old) * dt;
+
+						// Anti wind-UP
+
+					if (sum_err_x > 500)
+						sum_err_x = 500;
 					
-					Roll = BASERC - K_P * err_x + K_I * sum_err_x;
-					Pitch = BASERC - K_P * err_y + K_I * sum_err_y;
+					if (sum_err_y > 500)
+						sum_err_y = 500;
+
+					if (sum_err_yaw > 500)
+						sum_err_yaw = 500;
+
+					if (sum_err_x < -500)
+						sum_err_x = -500;
+					
+					if (sum_err_y < -500)
+						sum_err_y = -500;
+
+					if (sum_err_yaw < -500)
+						sum_err_yaw = -500;
+
+					double Ix = K_I * sum_err_x;
+					double Iy = K_I * sum_err_y;
+
+					// Derivative
+
+					double Dx = K_D * (err_x - err_x_old);//(K_D * err_x - Dx_sum) * N;
+					double Dy = K_D * (err_y - err_y_old);//(K_D * err_y - Dx_sum) * N;
+
+					// Dx_sum += (Dx - Dx_old) * dt;
+					// Dy_sum += (Dy - Dy_old) * dt;
+
+					// if (Dx_sum > 500)
+					// 	Dx_sum = 500;
+
+					// if (Dx_sum < -500)
+					// 	Dx_sum = -500;
+
+					// if (Dy_sum > 500)
+					// 	Dy_sum = 500;
+
+					// if (Dy_sum < -500)
+					// 	Dy_sum = -500;
+
+					// Calculate Roll and Pitch
+					
+					Roll = BASERC - Px - Ix - Dx;
+					Pitch = BASERC - Py - Iy - Dy;
 					Yaw = BASERC;		// Yaw = BASERC - K_P * err_yaw  + K_I * sum_err_yaw;
 
-					if (refVariance_ > 100 && abs(err_x) < 100 && abs(err_y) < 100) {
+
+					// Store state
+
+					err_x_old = err_x;
+					err_y_old = err_y;
+					err_x_old = err_x;
+				
+					Dx_old = Dx;
+					Dy_old  = Dy;
+
+					if (refVariance_ > 100 && sqrt(pow(err_x, 2) + pow(err_y, 2)) < 200){ //abs(err_x) < 200 && abs(err_y) < 200) {
 
 						if (Fstatus_ == LANDING){
 						
@@ -700,7 +751,10 @@ void hexacopter::control_rule(){
 								Throttle = MINRC;
 						}
 						else
-							Throttle = BASERC  - 200;
+							if (GRASPING)
+								Throttle = BASERC - 100;
+							else // Approaching
+								Throttle = BASERC  - 150;
 				
 						/*
 						/// Controller altitude dependant
@@ -722,18 +776,10 @@ void hexacopter::control_rule(){
 					Throttle = BASERC;
 
 					if (( altitude_ < MAX_ALTITUDE ) && ( budgetResidual_ < -50 )){
-						Yaw += 100;
+						Yaw += 80;
 						Throttle += 150;
 					}
 				}  
-			}break;
-			case GRASPING:{
-
-				Roll = BASERC;
-				Pitch = BASERC;
-				Yaw = BASERC; 
-				Throttle = BASERC - 100;
-
 			}break;
 			case LIFT_OBJ:{
 
@@ -760,7 +806,7 @@ void hexacopter::control_rule(){
 
 			}		
 		}
-
+	
 		// std::cout << Roll << " " << Pitch << " " << Yaw << " " << Throttle << std::endl;
 
 		set_ORCIn(Roll, Pitch, Throttle, Yaw);
@@ -775,7 +821,8 @@ void hexacopter::control_rule(){
 
 bool hexacopter::setSYSID_MYGCS()
 {
-	ros::ServiceClient client = n_->serviceClient<mavros_msgs::StreamRate>("/mavros/set_stream_rate");
+
+	ros::ServiceClient client = n_->serviceClient<mavros_msgs::StreamRate>(ns_ + "/mavros/set_stream_rate");
 	mavros_msgs::StreamRate srv;
 	srv.request.stream_id = 0;
 	srv.request.message_rate = 100;
@@ -786,12 +833,12 @@ bool hexacopter::setSYSID_MYGCS()
 	else
 		ROS_INFO("Failed to call service");
 	
-	ros::ServiceClient cl_get = n_->serviceClient<mavros_msgs::ParamGet>("/mavros/param/get");
+	ros::ServiceClient cl_get = n_->serviceClient<mavros_msgs::ParamGet>(ns_ + "/mavros/param/get");
 	
 	mavros_msgs::ParamGet paramget;
 	paramget.request.param_id = "SYSID_MYGCS";
 
-	ros::ServiceClient cl = n_->serviceClient<mavros_msgs::ParamSet>("/mavros/param/set");
+	ros::ServiceClient cl = n_->serviceClient<mavros_msgs::ParamSet>(ns_ + "/mavros/param/set");
 	
 	uint16_t err_count = 1000;
 
@@ -867,9 +914,26 @@ void hexacopter::setWPMission(){
 	wpList.push_back(generateWP(HOME_LAT, HOME_LONG, 0, 0));
 
 	// Mission WayPoints
-	wpList.push_back(generateWP(0, 0, 0, 0, 2, 0,0, 178, 0));
-	wpList.push_back(generateWP(43.612204, 10.586602, altitude_));
-	wpList.push_back(generateWP(43.611812, 10.585731, altitude_));
+	float  wp_text[10];
+	
+	std::string line;
+	std::ifstream infile("/home/solaris/catkin_ws/src/hexacopter_class/conf/gridWPs_Perignano.waypoints");		
+
+
+    	while(std::getline(infile, line)){
+
+	    	std::istringstream iss(line);
+
+	    	iss >> wp_text[0] >> wp_text[1] >> wp_text[2] >> wp_text[3] >> wp_text[4] >> wp_text[5] >> wp_text[6] >> wp_text[7] >> wp_text[8] >> wp_text[9] >> wp_text[10];
+
+	    	wpList.push_back(generateWP(wp_text[8], wp_text[9], altitude_, wp_text[4], wp_text[5] , wp_text[6] , wp_text[7], wp_text[3] ));
+
+	}
+
+
+	// wpList.push_back(generateWP(0, 0, 0, 0, 2, 0,0, 178, 0));
+	// wpList.push_back(generateWP(43.612204, 10.586602, altitude_));
+	// wpList.push_back(generateWP(43.611812, 10.585731, altitude_));
 
 	while(!sendWP(wpList));
 
@@ -888,7 +952,7 @@ bool hexacopter::sendWP(std::vector<mavros_msgs::Waypoint> wps){
 
 	// Send wp mission procedure
 
-	ros::ServiceClient waypointMission_cl = n_->serviceClient<mavros_msgs::WaypointPush>("/mavros/mission/push");
+	ros::ServiceClient waypointMission_cl = n_->serviceClient<mavros_msgs::WaypointPush>(ns_ + "/mavros/mission/push");
 
 	if(waypointMission_cl.call(srv_wp)){
 		if (verbose_ == true)
@@ -930,6 +994,7 @@ float hexacopter::ctrl_tau(){
 	float tauRef = 3; // [s]
 	
 	return KP_TAU * (tauRef - tau_);
+
 }
 
 bool hexacopter::check_grasp(){
@@ -1016,7 +1081,7 @@ void hexacopter::spin(){
 
 	setWPMission();
 
-	set_Mode(AUTO);
+//	set_Mode(AUTO);
 	
 	// -------------------------------------------------------------------------------
 
@@ -1105,9 +1170,9 @@ void hexacopter::spin(){
 
 							Fstatus_ = APPROACHING;
 						}
-						 else 
-						 	if (budgetResidual_ < -150 && mode_ == LOITER)
-						 		set_Mode(AUTO);				
+						else 
+							if (budgetResidual_ < -150 && mode_ == LOITER)
+								set_Mode(AUTO);				
 
 						// -------------------------------------------------------------------------------
 
@@ -1128,7 +1193,6 @@ void hexacopter::spin(){
 
 					case LANDING:{
 
-
 						ROS_INFO("LANDING");
 
 						// -------------------------> Landing <-----------------------------------
@@ -1140,8 +1204,10 @@ void hexacopter::spin(){
 
 					}break;
 					case ENDING:{
+
 						ROS_INFO("ENDING");
 						break;
+
 					}break;
 					default:{ // PILOT_CTRL
 

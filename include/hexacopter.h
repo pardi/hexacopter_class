@@ -31,6 +31,8 @@
 // Standard LIBs
 #include <termios.h>
 #include <thread>
+#include <sstream>
+#include <fstream>
 
 #define STD_VID_WIDTH 	1280 
 #define STD_VID_HEIGHT 	720
@@ -71,8 +73,10 @@
 #define a3 0.330016583747927
 
 
-#define K_P  0.5//((altitude_> 12)?0.9:(altitude_> 3)?0.4:(altitude_> 2)?0.32:(altitude_> 1.2)?0.2:0.15)
-#define K_I  0.1
+#define K_P  .4//((altitude_ > 10)?0.5:(altitude_ > 3)?0.25:0.1) //((altitude_> 12)?0.9:(altitude_> 3)?0.4:(altitude_> 2)?0.32:(altitude_> 1.2)?0.2:0.15)
+#define K_I  0//((altitude_ > 10)?0.1:(altitude_ > 3)?0.08:0.05)
+#define K_D .1
+#define N 100
 #define KP_TAU 0.1
 #define sgn(x) ((x>0)?1:-1)
 
@@ -210,6 +214,8 @@ namespace hxcpt {
 		// ROS
 		
 		ros::NodeHandle* n_;
+
+		std::string ns_;
 
 		ros::Subscriber mavros_state_sub_;
 		ros::Subscriber mavros_gpsFIX_sub_;

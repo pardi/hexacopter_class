@@ -16,7 +16,7 @@
 
 		<!-- Load recognition node -->
 
-		<include file="$(find mark_follower)/launch/first_challenge_recognition.launch" />
+		<include file="$(find mark_follower)/launch/third_challenge_recognition.launch" />
 
 		<!-- Load UAV control node -->
 
