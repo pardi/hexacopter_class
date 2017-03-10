@@ -123,6 +123,10 @@ hexacopter::hexacopter(ros::NodeHandle* n, bool verbose){
 
 	rcStart_ = false;
 
+	// Gripper
+
+	release_obj_ = false;
+
 	// Thread
 
 	th_spin_ = new std::thread(&hexacopter::spin, this);
@@ -350,8 +354,13 @@ bool hexacopter::set_ORCIn(int ch1, int ch2, int ch3, int ch4, int ch5, int ch6,
 	// Other channels
 	chs.push_back(ch5);
 	chs.push_back(ch6);
-	chs.push_back(ch7);	
-	chs.push_back(ch8);
+	chs.push_back(ch7);
+
+	if (release_obj_ == true)	
+		chs.push_back(MINRC);
+	else
+		chs.push_back(MAXRC);
+
 
 	// std::cout << ch1 << " " << ch2 << " " << ch3 << " " << ch4 << std::endl;
 
@@ -629,7 +638,7 @@ void hexacopter::control_rule(){
 			}break;
 			default: {// THIRD_CHALLENGE:
 
-				if ( (Fstatus_ == PILOT_CTRL  || mode_  != LOITER ) || ( Fstatus_ != APPROACHING && Fstatus_ != SEEKING && Fstatus_ != GRASPING && Fstatus_ != DRAG_TO_DZ && Fstatus_ != RELEASE_OBJ && Fstatus_ != LIFT_OBJ) ) 
+				if ( (Fstatus_ == PILOT_CTRL  || mode_  != LOITER ) || ( Fstatus_ != APPROACHING && Fstatus_ != SEEKING && Fstatus_ != GRASPING && Fstatus_ != DRAG_TO_DZ && Fstatus_ != RELEASE_OBJ && Fstatus_ != LIFT_OBJ && Fstatus_  != MANUAL_TAKEOFF) ) 
 					continue;
 
 			}			
@@ -781,6 +790,14 @@ void hexacopter::control_rule(){
 					}
 				}  
 			}break;
+			case MANUAL_TAKEOFF:{
+
+				Roll = BASERC;
+				Pitch = BASERC;
+				Yaw = BASERC; 
+				Throttle = BASERC + 300;
+
+			}break;
 			case LIFT_OBJ:{
 
 				Roll = BASERC;
@@ -809,8 +826,7 @@ void hexacopter::control_rule(){
 	
 		// std::cout << Roll << " " << Pitch << " " << Yaw << " " << Throttle << std::endl;
 
-		set_ORCIn(Roll, Pitch, Throttle, Yaw);
-
+			set_ORCIn(Roll, Pitch, Throttle, Yaw);
 		// --------------------------------------------------------------------------------------------------------------------------------- 
 
 		r.sleep();
@@ -1248,6 +1264,23 @@ void hexacopter::spin(){
 						// -------------------------------------------------------------------------------
 
 					}break;
+					case MANUAL_TAKEOFF:{
+						//------------------------> Takeoff operation <-------------------------
+
+						release_obj_ = false;
+
+						if  (altitude_  > (preset_h - 0.5) ){
+
+							// When the defined altitude is reached, set Mode to LOITER
+
+							if (hold_on_DZ(false))
+								// Reach Central Position
+								Fstatus_ = SEEKING;
+							
+						}
+						// -------------------------------------------------------------------------------
+
+					}break;
 					case SEEKING:{
 
 						ROS_INFO("SEEKING");
@@ -1276,7 +1309,7 @@ void hexacopter::spin(){
 
 						// ------------------------->Approaching<------------------------------
 						
-						if (altitude_ < 0.5)
+						if (altitude_ < 0.8)
 							Fstatus_ = GRASPING;						
 
 						// -------------------------------------------------------------------------------
@@ -1289,9 +1322,11 @@ void hexacopter::spin(){
 
 						// ---------------------------->Grasping<--------------------------------
 
-						if (rcIn_.channels[8] > BASERC)
-							Fstatus_ = LIFT_OBJ;
+						// if (rcIn_.channels[8] > BASERC)
+						// 	Fstatus_ = LIFT_OBJ;
 						
+						if (altitude_ < 0.8)
+							Fstatus_ == LIFT_OBJ;
 
 
 						// // Call Fcn to activate grasp
@@ -1416,11 +1451,11 @@ void hexacopter::spin(){
 
 						// ------------------------>Release object<----------------------------
 						
+						if (altitude_ < 0.5){
+							release_obj_ = true;
 
-						if (altitude_ < 0.5)
-
+						}
 							// Release Grasp
-
 							Fstatus_ = TAKEOFF;						
 
 						// -------------------------------------------------------------------------------

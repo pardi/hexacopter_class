@@ -109,6 +109,7 @@ namespace hxcpt {
 						RELEASE_OBJ,
 						LANDING,
 						TAKEOFF,
+						MANUAL_TAKEOFF,
 						PILOT_CTRL,
 						ENDING
 					};
@@ -210,6 +211,8 @@ namespace hxcpt {
 		bool challenge_;
 		FState Fstatus_;
 		bool throttle_down_;
+		bool release_obj_;
+
 		
 		// ROS
 		
